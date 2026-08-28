@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventário Áudio & Vídeo (Local 183) - Almoxarifado 2.0</title>
+  
+  <!-- Fonte Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Ícones Lucide -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  
+  <!-- Bibliotecas externas: html2pdf, Supabase, Compressorjs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/compressorjs/1.2.1/compressor.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --secondary: #1e293b;
+      --bg-main: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #334155;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --danger-light: #fee2e2;
+      --warning: #f59e0b;
+      --warning-bg: #fef3c7;
+      --info: #3b82f6;
+      --info-bg: #dbeafe;
+      --success-bg: #dcfce7;
+      --success-text: #15803d;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+    /* Menu Lateral */
+    aside.sidebar { 
+      width: 260px; 
+      background-color: var(--secondary); 
+      color: white; 
+      display: flex; 
+      flex-direction: column; 
+      padding: 20px; 
+      flex-shrink: 0; 
+    }
+    .sidebar-brand { 
+      font-size: 1.15rem; 
+      font-weight: 700; 
+      margin-bottom: 25px; 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      color: var(--primary); 
+    }
+    .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1; }
+    .sidebar-menu li a { 
+      color: #94a3b8; 
+      text-decoration: none; 
+      padding: 10px 14px; 
+      border-radius: 8px; 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      font-weight: 500; 
+      font-size: 0.86rem; 
+      transition: all 0.2s; 
+    }
+    .sidebar-menu li a:hover { background-color: rgba(255, 255, 255, 0.06); color: white; }
+    .sidebar-menu li a.active { background-color: #334155; color: white; font-weight: 600; }
+    .sidebar-section-title { font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin: 12px 0 4px 14px; }
+
+    /* Conteúdo Principal */
+    .main-content { flex: 1; padding: 25px 30px; overflow-y: auto; height: 100vh; display: flex; flex-direction: column; gap: 18px; }
+    
+    .page-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .page-header h1 { font-size: 1.5rem; color: var(--secondary); font-weight: 800; display: flex; align-items: center; gap: 10px; }
+    .page-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 3px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+    /* Botões */
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 9px 16px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: background 0.2s; text-decoration: none; }
+    .btn-primary:hover { background: var(--primary-dark); }
+
+    .btn-action-alt { background: #3b82f6; color: white; border: none; padding: 9px 16px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: background 0.2s; text-decoration: none; }
+    .btn-action-alt:hover { background: #2563eb; }
+
+    .btn-back { background: white; color: var(--secondary); border: 1px solid var(--border); padding: 9px 16px; border-radius: 8px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; }
+    .btn-back:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+    .info-badge { font-size: 0.82rem; padding: 6px 12px; border-radius: 6px; background: #e2e8f0; color: #475569; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+    .info-badge.success { background: var(--success-bg); color: var(--success-text); }
+    .info-badge.error { background: var(--danger-light); color: #b91c1c; }
+
+    /* Barra de Categorias Horizontal (Pills) */
+    .category-filter-bar {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 4px 2px 10px 2px;
+      scrollbar-width: thin;
+    }
+    .category-pill {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .category-pill:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    .category-pill.active { background: var(--secondary); color: white; border-color: var(--secondary); }
+
+    /* Barra de Busca e Ações */
+    .search-filter-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .search-box {
+      flex: 1;
+      min-width: 260px;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .search-box i {
+      position: absolute;
+      left: 12px;
+      color: var(--text-muted);
+      width: 16px;
+      height: 16px;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 9px 12px 9px 36px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-box input:focus { border-color: var(--primary); }
+
+    /* Tabela Estilo Card */
+    .table-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; flex: 1; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+    .table-container { overflow: auto; flex: 1; }
+    
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { background: #f8fafc; color: var(--secondary); font-weight: 600; padding: 12px 14px; font-size: 0.82rem; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--border); white-space: nowrap; }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 0.84rem; vertical-align: middle; }
+    tr:hover { background-color: #f8fafc; }
+
+    /* Badges na Tabela */
+    .badge-cat { background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+    .badge-loc { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+
+    /* Botões de Ação na Tabela */
+    .action-buttons { display: flex; gap: 6px; align-items: center; justify-content: center; }
+    .btn-action { background: none; border: none; cursor: pointer; padding: 6px 8px; border-radius: 6px; color: var(--text-muted); transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; }
+    .btn-action.edit:hover { background: #e0f2fe; color: #0284c7; }
+    .btn-action.duplicate:hover { background: #dcfce7; color: #15803d; }
+    .btn-action.delete:hover { background: var(--danger-light); color: var(--danger); }
+
+    /* Miniatura de Foto */
+    .miniatura-tabela { width: 42px; height: 42px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 1px solid var(--border); transition: transform 0.2s; }
+    .miniatura-tabela:hover { transform: scale(1.1); }
+    .sem-foto-icon { color: #cbd5e1; font-size: 1.2rem; display: inline-flex; align-items: center; justify-content: center; }
+
+    /* Modais */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-overlay.active { display: flex; }
+    .modal-card { background: white; border-radius: 16px; width: 100%; max-width: 680px; padding: 26px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .modal-header h2 { font-size: 1.25rem; color: var(--secondary); font-weight: 700; }
+    .modal-close { background: transparent; border: none; font-size: 1.2rem; color: var(--text-muted); cursor: pointer; padding: 4px; }
+
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full-width { grid-column: span 2; }
+    .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--secondary); }
+    .form-group input, .form-group select { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem; outline: none; transition: border 0.2s; background: white; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+
+    .preview-foto-container { margin-top: 6px; display: flex; align-items: center; gap: 10px; }
+    .preview-foto-container img { max-width: 80px; max-height: 80px; border-radius: 6px; border: 1px solid var(--border); object-fit: cover; }
+
+    .modal-footer { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+    .btn-submit { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: background 0.2s; }
+    .btn-submit:hover { background: var(--primary-dark); }
+    .btn-cancel { background: white; color: var(--secondary); border: 1px solid var(--border); padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+    .btn-cancel:hover { background: #f1f5f9; }
+  </style>
+</head>
+<body>
+
+  <!-- Menu Lateral Unificado -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <i data-lucide="box"></i>
+      <span>Almoxarifado 2.0</span>
+    </div>
+    <ul class="sidebar-menu">
+      <li><a href="index.html"><i data-lucide="layout-dashboard"></i> Dashboard Geral</a></li>
+      <div class="sidebar-section-title">Módulos de Áudio & Vídeo</div>
+      <li><a href="index183.html" class="active"><i data-lucide="layers"></i> Inventário A&V (183)</a></li>
+      <li><a href="analytics.html"><i data-lucide="bar-chart-3"></i> Sysman Analytics</a></li>
+      <div class="sidebar-section-title">Controles Operacionais</div>
+      <li><a href="agenda.html"><i data-lucide="calendar"></i> Agenda de Eventos</a></li>
+      <li><a href="manutencao.html"><i data-lucide="wrench"></i> Manutenção Externa</a></li>
+      <li><a href="material de estudo.html"><i data-lucide="clipboard-list"></i> Listas de Estudos</a></li>
+      <li><a href="TVs em circulacao.html"><i data-lucide="tv"></i> Controle de TVs</a></li>
+      <li><a href="historico operacao.html"><i data-lucide="send"></i> Lançamentos Operação</a></li>
+      <li><a href="historico notebooks.html"><i data-lucide="monitor"></i> Lançamentos Notebooks</a></li>
+    </ul>
+
+    <div style="margin-top: auto; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;">
+      <span id="responsavelNome" style="font-size: 0.75rem; color: #94a3b8;">João Vitor Toledo</span>
+      <button id="btnSair" onclick="fazerLogout()" title="Sair" style="background: none; border: none; color: #f87171; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 0.75rem;">
+        <i data-lucide="log-out" style="width: 14px; height: 14px;"></i> Sair
+      </button>
+    </div>
+  </aside>
+
+  <!-- Conteúdo Principal -->
+  <main class="main-content">
+    
+    <!-- Topo da Página -->
+    <div class="page-header">
+      <div>
+        <h1><i data-lucide="layers" style="color: var(--primary);"></i> Inventário Áudio & Vídeo</h1>
+        <p>Controle de estoque, equipamentos e transferências - Local 183</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-primary" onclick="abrirModalCadastro()"><i data-lucide="plus"></i> Novo Item</button>
+        <button class="btn-back" onclick="gerarRelatorioPDF()"><i data-lucide="file-text"></i> Baixar PDF</button>
+        <a href="analytics.html" class="btn-action-alt"><i data-lucide="bar-chart-2"></i> Ver Analytics</a>
+        <div id="statusInfo" class="info-badge success"><i data-lucide="cloud"></i> Supabase Conectado</div>
+        <a href="index.html" class="btn-back"><i data-lucide="arrow-left"></i> Voltar</a>
+      </div>
+    </div>
+
+    <!-- Barra de Filtros de Categorias -->
+    <div class="category-filter-bar" id="listaCategorias">
+      <div class="category-pill active" onclick="filtrarPorCategoria('Todos')">📦 Todos os Itens</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Consoles')">🎛️ Consoles</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Interface')">🎛️ Interface</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Amplificadores')">🔊 Amplificadores</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Processadores de áudio')">⚙️ Processadores</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Antenas RF')">📡 Antenas RF</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Cabeamento AC')">⚡ AC</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Notebooks')">💻 Notebooks</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Cabeamento AC/Fz')">⚡ AC/Fz</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('BodyPack')">📻 BodyPacks</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Plugon')">⚡ Plugon</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Fones EAR / Monitor')">🎧 Fones EAR</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('HeardSet')">🎧 HeadSet</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Cabeamento Combo')">🔌 Combo</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Cabeamento de Áudio - P2')">🔌 P2</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Cabeamento de Áudio - P10')">🔌 P10</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Cabeamento de Áudio - XLR')">🔌 XLR</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Caixas de Som')">📢 Caixas de Som</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('SubGrave')">📢 SubGrave</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Mic c/ Fio')">🎙️ Mic c/ Fio</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Mic s/ Fio')">🎙️ Mic s/ Fio</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Pentacústicas - Penta 10A')">🎛️ Penta 10A</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Pentacústicas - Penta 20A')">🎛️ Penta 20A</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Transmissão')">📡 Transmissão</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('TVs')">📺 TVs</div>
+      <div class="category-pill" onclick="filtrarPorCategoria('Outros')">📦 Outros</div>
+    </div>
+
+    <!-- Barra de Busca Rápida -->
+    <div class="search-filter-card">
+      <div class="search-box">
+        <i data-lucide="search"></i>
+        <input type="text" id="buscaRapida" placeholder="Pesquisar por Patrimônio, Marca, Modelo, Nº Série, Local ou Observação..." oninput="executarBusca()">
+      </div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+        <span id="contadorItens">Carregando...</span>
+      </div>
+    </div>
+
+    <!-- Tabela Geral de Itens -->
+    <div class="table-card">
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 50px; text-align: center;">Foto</th>
+              <th>Classe / Categoria</th>
+              <th>Patrimônio</th>
+              <th>Fabricante</th>
+              <th>Modelo</th>
+              <th>Nº Série (SN)</th>
+              <th>Qtd</th>
+              <th>Cód. Local</th>
+              <th>Observações</th>
+              <th style="text-align: center; width: 140px;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="corpoTabela">
+            <!-- Dados carregados via Supabase -->
+          </tbody>
+        </table>
+        <div id="avisoVazio" style="display: none; padding: 35px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+          <i data-lucide="info" style="width: 24px; height: 24px; color: var(--primary); display: inline-block; vertical-align: middle; margin-right: 6px;"></i>
+          Nenhum item localizado com os filtros selecionados.
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL DE CADASTRO -->
+  <div id="modalCadastro" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Cadastrar Novo Equipamento</h2>
+        <button class="modal-close" onclick="fecharModalCadastro()"><i data-lucide="x"></i></button>
+      </div>
+
+      <form id="formCadastro" onsubmit="event.preventDefault(); cadastrarNovoItem();">
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="categoria">Classe / Categoria</label>
+            <select id="categoria" required>
+              <option value="" disabled selected hidden>Selecione...</option>
+              <option value="Consoles">Consoles</option>
+              <option value="Interface">Interface</option>
+              <option value="Amplificadores">Amplificadores</option>
+              <option value="Processadores de áudio">Processadores de áudio</option>
+              <option value="Antenas RF">Antenas RF</option>
+              <option value="Cabeamento AC">Cabeamento AC</option>
+              <option value="Notebooks">Notebooks</option>
+              <option value="Cabeamento AC/Fz">Cabeamento AC/Fz</option>
+              <option value="BodyPack">BodyPack</option>
+              <option value="Plugon">Plugon</option>
+              <option value="Fones EAR / Monitor">Fones EAR / Monitor</option>
+              <option value="HeardSet">HeadSet</option>
+              <option value="Cabeamento Combo">Cabeamento Combo</option>
+              <option value="Cabeamento de Áudio - P2">Cabeamento de Áudio - P2</option>
+              <option value="Cabeamento de Áudio - P10">Cabeamento de Áudio - P10</option>
+              <option value="Cabeamento de Áudio - XLR">Cabeamento de Áudio - XLR</option>
+              <option value="Caixas de Som">Caixas de Som</option>
+              <option value="SubGrave">SubGrave</option>
+              <option value="Mic c/ Fio">Mic c/ Fio</option>
+              <option value="Mic s/ Fio">Mic s/ Fio</option>
+              <option value="Pentacústicas - Penta 10A">Pentacústicas - Penta 10A</option>
+              <option value="Pentacústicas - Penta 20A">Pentacústicas - Penta 20A</option>
+              <option value="Transmissão">Transmissão</option>
+              <option value="TVs">TVs</option>
+              <option value="Outros">Outros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="codigo">Nº Patrimônio</label>
+            <input type="text" id="codigo" placeholder="Ex: 11833 ou 000123" required>
+          </div>
+
+          <div class="form-group">
+            <label for="marca">Fabricante / Marca</label>
+            <input type="text" id="marca" placeholder="Ex: Shure, JBL, Yamaha" required>
+          </div>
+          <div class="form-group">
+            <label for="modelo">Modelo</label>
+            <input type="text" id="modelo" placeholder="Ex: SM58, CL5, EON615" required>
+          </div>
+
+          <div class="form-group">
+            <label for="sn">Número de Série (SN)</label>
+            <input type="text" id="sn" placeholder="Caso não tenha, deixe S/N">
+          </div>
+          <div class="form-group">
+            <label for="quantidade">Qtd em Estoque</label>
+            <input type="number" id="quantidade" min="1" value="1" required>
+          </div>
+
+          <div class="form-group">
+            <label for="local">Cód. Local de Entrada</label>
+            <input type="text" id="local" value="01.03.21.007" placeholder="Ex: 01.03.21.007" required>
+          </div>
+          <div class="form-group">
+            <label for="fotoInput">Tirar / Escolher Foto</label>
+            <input type="file" id="fotoInput" accept="image/*" capture="environment">
+            <div id="previewCadastro" class="preview-foto-container"></div>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="observacoes">Observações / Detalhes</label>
+            <input type="text" id="observacoes" placeholder="Ex: Entrada Nota Fiscal 11833, Dual Channel...">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" onclick="fecharModalCadastro()">Cancelar</button>
+          <button type="submit" class="btn-submit">Salvar no Estoque</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE EDIÇÃO -->
+  <div id="modalEditar" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Editar / Transferir Equipamento</h2>
+        <button class="modal-close" onclick="fecharModal()"><i data-lucide="x"></i></button>
+      </div>
+
+      <form id="formEditar" onsubmit="event.preventDefault(); salvarEdicaoItem();">
+        <input type="hidden" id="edit-id">
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="edit-categoria">Classe / Categoria</label>
+            <select id="edit-categoria" required>
+              <option value="" disabled selected hidden>Selecione...</option>
+              <option value="Consoles">Consoles</option>
+              <option value="Interface">Interface</option>
+              <option value="Amplificadores">Amplificadores</option>
+              <option value="Processadores de áudio">Processadores de áudio</option>
+              <option value="Antenas RF">Antenas RF</option>
+              <option value="Cabeamento AC">Cabeamento AC</option>
+              <option value="Notebooks">Notebooks</option>
+              <option value="Cabeamento AC/Fz">Cabeamento AC/Fz</option>
+              <option value="BodyPack">BodyPack</option>
+              <option value="Plugon">Plugon</option>
+              <option value="Fones EAR / Monitor">Fones EAR / Monitor</option>
+              <option value="HeardSet">HeadSet</option>
+              <option value="Cabeamento Combo">Cabeamento Combo</option>
+              <option value="Cabeamento de Áudio - P2">Cabeamento de Áudio - P2</option>
+              <option value="Cabeamento de Áudio - P10">Cabeamento de Áudio - P10</option>
+              <option value="Cabeamento de Áudio - XLR">Cabeamento de Áudio - XLR</option>
+              <option value="Caixas de Som">Caixas de Som</option>
+              <option value="SubGrave">SubGrave</option>
+              <option value="Mic c/ Fio">Mic c/ Fio</option>
+              <option value="Mic s/ Fio">Mic s/ Fio</option>
+              <option value="Pentacústicas - Penta 10A">Pentacústicas - Penta 10A</option>
+              <option value="Pentacústicas - Penta 20A">Pentacústicas - Penta 20A</option>
+              <option value="Transmissão">Transmissão</option>
+              <option value="TVs">TVs</option>
+              <option value="Outros">Outros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="edit-codigo">Nº Patrimônio</label>
+            <input type="text" id="edit-codigo" required>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-marca">Fabricante / Marca</label>
+            <input type="text" id="edit-marca" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-modelo">Modelo</label>
+            <input type="text" id="edit-modelo" required>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-sn">Nº Série (SN)</label>
+            <input type="text" id="edit-sn">
+          </div>
+          <div class="form-group">
+            <label for="edit-quantidade">Quantidade</label>
+            <input type="number" id="edit-quantidade" min="0" required>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-local">Cód. Local / Transferência</label>
+            <input type="text" id="edit-local" placeholder="Ex: 01.03.21.007 (almox.) ou outro código para transferir" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-fotoInput">Alterar Foto</label>
+            <input type="file" id="edit-fotoInput" accept="image/*">
+            <div id="edit-preview" class="preview-foto-container"></div>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="edit-observacoes">Observações / Detalhes</label>
+            <input type="text" id="edit-observacoes">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+          <button type="submit" class="btn-submit">Atualizar Dados</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE VISUALIZAÇÃO DE IMAGEM GRANDE -->
+  <div id="modalFotoGrande" class="modal-overlay" onclick="fecharFotoGrande()">
+    <div style="position: relative; max-width: 90%; max-height: 90%; display: flex; flex-direction: column; align-items: center;">
+      <img id="imgGrande" src="" alt="Foto ampliada" style="max-width: 100%; max-height: 80vh; border-radius: 12px; border: 4px solid white; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <p style="text-align: center; color: white; margin-top: 10px; font-weight: 600; font-size: 0.85rem;">Clique em qualquer lugar para fechar</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
