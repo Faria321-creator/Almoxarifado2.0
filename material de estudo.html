@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Materiais de Estudos / Listas - Almoxarifado 2.0</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+  <style>
+    :root {
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --secondary: #1e293b;
+      --bg-main: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #334155;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+    /* Menu Lateral */
+    aside.sidebar { width: 260px; background-color: var(--secondary); color: white; display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
+    .sidebar-brand { font-size: 1.1rem; font-weight: 700; margin-bottom: 30px; display: flex; align-items: center; gap: 10px; color: var(--primary); }
+    .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .sidebar-menu li a { color: #94a3b8; text-decoration: none; padding: 12px 15px; border-radius: 8px; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 0.9rem; transition: all 0.2s; }
+    .sidebar-menu li a:hover { background-color: rgba(255, 255, 255, 0.05); color: white; }
+    .sidebar-menu li a.active { background-color: #334155; color: white; }
+    .sidebar-section-title { font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin: 12px 0 4px 14px; }
+
+    /* Conteúdo Principal */
+    .main-content { flex: 1; padding: 30px; overflow-y: auto; height: 100vh; display: flex; flex-direction: column; }
+    .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+    .page-header h1 { font-size: 1.5rem; color: var(--secondary); font-weight: 700; }
+    .page-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 4px; }
+    .header-actions { display: flex; gap: 10px; }
+
+    /* Botões */
+    .btn-action { background: var(--primary); color: white; border: none; padding: 9px 16px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: background 0.2s; text-decoration: none; }
+    .btn-action:hover { background: var(--primary-dark); }
+    
+    .btn-delete { background: white; color: var(--danger); border: 1px solid var(--danger); padding: 7px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s; }
+    .btn-delete:hover { background: #fef2f2; }
+
+    .btn-back { background: white; color: var(--secondary); border: 1px solid var(--border); padding: 9px 16px; border-radius: 8px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; }
+    .btn-back:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+    /* Botões da Tabela */
+    .btn-row-action { background: transparent; border: none; cursor: pointer; padding: 4px 6px; border-radius: 6px; transition: background 0.2s; }
+    .btn-row-action.edit { color: var(--warning); }
+    .btn-row-action.edit:hover { background: #fffbe0; }
+    .btn-row-action.delete { color: var(--danger); }
+    .btn-row-action.delete:hover { background: #fef2f2; }
+
+    /* Grid de Listas */
+    .folders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 10px; }
+    .folder-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 12px; }
+    .folder-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); border-color: var(--primary); }
+    .folder-icon { width: 42px; height: 42px; background: #ecfdf5; color: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+    .folder-title { font-size: 1.1rem; font-weight: 700; color: var(--secondary); }
+    .folder-info { font-size: 0.85rem; color: var(--text-muted); display: flex; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px; }
+
+    /* Seção da Tabela */
+    .table-view { display: none; flex-direction: column; flex: 1; }
+    .table-view.active { display: flex; }
+
+    /* Tabela */
+    .table-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .table-container { overflow: auto; flex: 1; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    th { background: #f8fafc; color: var(--secondary); font-weight: 600; position: sticky; top: 0; z-index: 10; }
+    tr:hover { background-color: #f8fafc; }
+    
+    .badge-qtd { background-color: #dcfce7; color: #15803d; font-weight: 700; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; }
+
+    /* Modais */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-overlay.active { display: flex; }
+    .modal-card { background: white; border-radius: 16px; width: 100%; max-width: 500px; padding: 28px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal-header h2 { font-size: 1.25rem; color: var(--secondary); font-weight: 700; }
+    .modal-close { background: transparent; border: none; font-size: 1.2rem; color: var(--text-muted); cursor: pointer; }
+    
+    .form-grid { display: flex; flex-direction: column; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--secondary); }
+    .form-group input { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem; outline: none; transition: border 0.2s; }
+    .form-group input:focus { border-color: var(--primary); }
+    
+    .btn-submit { width: 100%; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
+    .btn-submit:hover { background: var(--primary-dark); }
+  </style>
+</head>
+<body>
+
+  <!-- Menu Lateral -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <i data-lucide="box"></i>
+      <span>Almoxarifado 2.0</span>
+    </div>
+    <ul class="sidebar-menu">
+      <li><a href="index.html"><i data-lucide="layout-dashboard"></i> Dashboard Geral</a></li>
+      <div class="sidebar-section-title">Módulos de Áudio & Vídeo</div>
+      <li><a href="index183.html"><i data-lucide="layers"></i> Inventário A&V (183)</a></li>
+      <li><a href="analytics.html"><i data-lucide="bar-chart-3"></i> Sysman Analytics</a></li>
+      <div class="sidebar-section-title">Controles Operacionais</div>
+      <li><a href="agenda.html"><i data-lucide="calendar"></i> Agenda de Eventos</a></li>
+      <li><a href="manutencao.html"><i data-lucide="wrench"></i> Manutenção Externa</a></li>
+      <li><a href="material de estudo.html" class="active"><i data-lucide="clipboard-list"></i> Listas de Estudos</a></li>
+      <li><a href="TVs em circulacao.html"><i data-lucide="tv"></i> Controle de TVs</a></li>
+      <li><a href="historico operacao.html"><i data-lucide="send"></i> Lançamentos Operação</a></li>
+      <li><a href="historico notebooks.html"><i data-lucide="monitor"></i> Lançamentos Notebooks</a></li>
+    </ul>
+  </aside>
+
+  <!-- Conteúdo Principal -->
+  <main class="main-content">
+    
+    <!-- VISÃO 1: CARDS DAS LISTAS -->
+    <div id="foldersView">
+      <div class="page-header">
+        <div>
+          <h1>Listas de Materiais de Eventos</h1>
+          <p>Selecione uma pasta para visualizar os equipamentos enviados ou crie uma nova lista.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn-action" onclick="openModalNewList()"><i data-lucide="plus"></i> Nova Lista</button>
+          <a href="index.html" class="btn-back"><i data-lucide="arrow-left"></i> Voltar</a>
+        </div>
+      </div>
+
+      <div class="folders-grid" id="foldersContainer"></div>
+    </div>
+
+    <!-- VISÃO 2: TABELA DA LISTA SELECIONADA -->
+    <div id="tableView" class="table-view">
+      <div class="page-header">
+        <div>
+          <h1 id="folderTitle">Lista Material</h1>
+          <p id="folderSubtitle">Operador: -- • Data: --</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn-action" onclick="openModalAddItem()"><i data-lucide="plus"></i> Adicionar Item</button>
+          <button class="btn-delete" onclick="excluirTabela()"><i data-lucide="trash-2"></i> Excluir Lista</button>
+          <button class="btn-back" onclick="closeFolder()"><i data-lucide="arrow-left"></i> Voltar às Listas</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50px;">Item</th>
+                <th>Tipo</th>
+                <th>Qtd.</th>
+                <th>Descrição / Equipamento</th>
+                <th>Retirado de</th>
+                <th>Local de Uso</th>
+                <th style="width: 80px; text-align: center;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaMateriais"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL 1: CRIAR NOVA LISTA -->
+  <div id="modalNewList" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Criar Nova Lista</h2>
+        <button class="modal-close" onclick="closeModal('modalNewList')"><i data-lucide="x"></i></button>
+      </div>
+
+      <form onsubmit="salvarNovaLista(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nome da Lista / Evento</label>
+            <input type="text" id="newListTitle" placeholder="Ex: Lista material Procissão" required>
+          </div>
+          <div class="form-group">
+            <label>Operador Responsável</label>
+            <input type="text" id="newListOperator" placeholder="Ex: Mauro / Equipe" required>
+          </div>
+          <div class="form-group">
+            <label>Data</label>
+            <input type="text" id="newListDate" placeholder="Ex: 12/07" required>
+          </div>
+          <div class="form-group">
+            <label>Local de Uso</label>
+            <input type="text" id="newListLocation" placeholder="Ex: Basílica Histórica" required>
+          </div>
+        </div>
+        <button type="submit" class="btn-submit">Criar Lista</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: ADICIONAR / EDITAR ITEM DA TABELA -->
+  <div id="modalItem" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modalItemTitle">Item da Lista</h2>
+        <button class="modal-close" onclick="closeModal('modalItem')"><i data-lucide="x"></i></button>
+      </div>
+
+      <form onsubmit="salvarItem(event)">
+        <input type="hidden" id="editIndex" value="-1">
+        
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Tipo de Item</label>
+            <input type="text" id="inpTipo" placeholder="Ex: Microfone" required>
+          </div>
+          <div class="form-group">
+            <label>Quantidade</label>
+            <input type="text" id="inpQtd" placeholder="Ex: 2Un" required>
+          </div>
+          <div class="form-group">
+            <label>Descrição / Equipamento</label>
+            <input type="text" id="inpDesc" placeholder="Ex: Shure SM58" required>
+          </div>
+          <div class="form-group">
+            <label>Retirado de</label>
+            <input type="text" id="inpRetirado" value="Almoxarifado Multimidia" required>
+          </div>
+          <div class="form-group">
+            <label>Local de Uso</label>
+            <input type="text" id="inpLocal" placeholder="Ex: Devotinhos" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit">Salvar Item</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'db_material_estudo';
+    let currentFolderKey = '';
+
+    const listasIniciais = {
+      pemsa: {
+        titulo: "Lista material PEMSA",
+        operador: "Mauro",
+        data: "08/07",
+        local: "Coral / Pemsa",
+        itens: [
+          { item: 1, tipo: "Microfone", qtd: "4Un", desc: "DPA", retirado: "Almoxarifado Multimidia", local: "Coral / Pemsa" },
+          { item: 2, tipo: "Microfone", qtd: "10Un", desc: "98HC", retirado: "Almoxarifado Multimidia", local: "Coral / Pemsa" },
+          { item: 3, tipo: "Microfone", qtd: "4Un", desc: "sm81", retirado: "Almoxarifado Multimidia", local: "Coral / Pemsa" }
+        ]
+      },
+      devotinhos: {
+        titulo: "Lista material Devotinhos",
+        operador: "Equipe",
+        data: "10/07",
+        local: "Devotinhos",
+        itens: [
+          { item: 1, tipo: "Microfone", qtd: "2Un", desc: "Shure SM58", retirado: "Almoxarifado Multimidia", local: "Devotinhos" },
+          { item: 2, tipo: "Pedestal", qtd: "2Un", desc: "Pedestal Girafa", retirado: "Almoxarifado Multimidia", local: "Devotinhos" }
+        ]
+      }
+    };
+
+    let listas = JSON.parse(localStorage.getItem(STORAGE_KEY)) || listasIniciais;
+
+    function salvarStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(listas));
+      } catch (e) {
+        console.error("Erro ao salvar listas de estudo no localStorage:", e);
+      }
+    }
+
+    function renderFolders() {
+      const container = document.getElementById('foldersContainer');
+      container.innerHTML = '';
+
+      Object.keys(listas).forEach(key => {
+        const list = listas[key];
+        container.innerHTML += `
+          <div class="folder-card" onclick="openFolder('${key}')">
+            <div class="folder-icon"><i data-lucide="folder"></i></div>
+            <div>
+              <div class="folder-title">${list.titulo}</div>
+              <div style="font-size:0.8rem; color:var(--text-muted); margin-top: 4px;">Operador: ${list.operador} • Data: ${list.data}</div>
+            </div>
+            <div class="folder-info">
+              <span><b>${list.itens.length}</b> itens</span>
+              <span>Local: ${list.local}</span>
+            </div>
+          </div>
+        `;
+      });
+
+      lucide.createIcons();
+    }
+
+    function openFolder(chaveLista) {
+      currentFolderKey = chaveLista;
+      document.getElementById('foldersView').style.display = 'none';
+      document.getElementById('tableView').classList.add('active');
+      renderTable();
+    }
+
+    function renderTable() {
+      const lista = listas[currentFolderKey];
+      if (!lista) return;
+
+      document.getElementById('folderTitle').innerText = lista.titulo;
+      document.getElementById('folderSubtitle').innerText = `Operador: ${lista.operador} • Data: ${lista.data}`;
+
+      const tbody = document.getElementById('tabelaMateriais');
+      tbody.innerHTML = '';
+
+      lista.itens.forEach((row, index) => {
+        tbody.innerHTML += `
+          <tr>
+            <td><b>${index + 1}</b></td>
+            <td>${row.tipo}</td>
+            <td><span class="badge-qtd">${row.qtd}</span></td>
+            <td><b>${row.desc}</b></td>
+            <td>${row.retirado}</td>
+            <td>${row.local}</td>
+            <td style="text-align: center;">
+              <button class="btn-row-action edit" onclick="openModalEditItem(${index})" title="Editar Item">
+                <i data-lucide="pencil" style="width: 16px; height: 16px;"></i>
+              </button>
+              <button class="btn-row-action delete" onclick="deleteItem(${index})" title="Excluir Item">
+                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      lucide.createIcons();
+    }
+
+    function closeFolder() {
+      document.getElementById('tableView').classList.remove('active');
+      document.getElementById('foldersView').style.display = 'block';
+      renderFolders();
+    }
+
+    /* Modal Nova Lista */
+    function openModalNewList() {
+      document.getElementById('modalNewList').classList.add('active');
+    }
+
+    function salvarNovaLista(e) {
+      e.preventDefault();
+      
+      const title = document.getElementById('newListTitle').value;
+      const operator = document.getElementById('newListOperator').value;
+      const date = document.getElementById('newListDate').value;
+      const location = document.getElementById('newListLocation').value;
+
+      const key = 'lista_' + Date.now();
+      
+      listas[key] = {
+        titulo: title,
+        operador: operator,
+        data: date,
+        local: location,
+        itens: []
+      };
+
+      salvarStorage();
+      closeModal('modalNewList');
+      renderFolders();
+      openFolder(key);
+    }
+
+    /* Modal Item Tabela */
+    function openModalAddItem() {
+      document.getElementById('modalItemTitle').innerText = "Adicionar Novo Item";
+      document.getElementById('editIndex').value = "-1";
+      document.getElementById('inpTipo').value = "";
+      document.getElementById('inpQtd').value = "";
+      document.getElementById('inpDesc').value = "";
+      document.getElementById('inpRetirado').value = "Almoxarifado Multimidia";
+      document.getElementById('inpLocal').value = listas[currentFolderKey].local || "";
+      document.getElementById('modalItem').classList.add('active');
+    }
+
+    function openModalEditItem(index) {
+      const item = listas[currentFolderKey].itens[index];
+      document.getElementById('modalItemTitle').innerText = `Editar Item #${index + 1}`;
+      document.getElementById('editIndex').value = index;
+      
+      document.getElementById('inpTipo').value = item.tipo;
+      document.getElementById('inpQtd').value = item.qtd;
+      document.getElementById('inpDesc').value = item.desc;
+      document.getElementById('inpRetirado').value = item.retirado;
+      document.getElementById('inpLocal').value = item.local;
+
+      document.getElementById('modalItem').classList.add('active');
+    }
+
+    function salvarItem(e) {
+      e.preventDefault();
+      
+      const index = parseInt(document.getElementById('editIndex').value);
+      const itemData = {
+        item: index >= 0 ? index + 1 : listas[currentFolderKey].itens.length + 1,
+        tipo: document.getElementById('inpTipo').value,
+        qtd: document.getElementById('inpQtd').value,
+        desc: document.getElementById('inpDesc').value,
+        retirado: document.getElementById('inpRetirado').value,
+        local: document.getElementById('inpLocal').value
+      };
+
+      if (index >= 0) {
+        listas[currentFolderKey].itens[index] = itemData;
+      } else {
+        listas[currentFolderKey].itens.push(itemData);
+      }
+
+      salvarStorage();
+      renderTable();
+      closeModal('modalItem');
+    }
+
+    function deleteItem(index) {
+      if(confirm("Deseja remover este item da lista?")) {
+        listas[currentFolderKey].itens.splice(index, 1);
+        salvarStorage();
+        renderTable();
+      }
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    function excluirTabela() {
+      if(confirm("Tem certeza que deseja excluir esta lista inteira?")) {
+        delete listas[currentFolderKey];
+        salvarStorage();
+        closeFolder();
+      }
+    }
+
+    // Inicialização
+    renderFolders();
+  </script>
+</body>
+</html>

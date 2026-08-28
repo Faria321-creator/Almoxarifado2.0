@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Geral - Almoxarifado 2.0</title>
+  
+  <!-- Fonte Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Ícones Lucide -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <!-- Biblioteca SheetJS para ler planilhas Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Biblioteca Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --secondary: #1e293b;
+      --bg-main: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #334155;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --danger-bg: #fee2e2;
+      --danger-text: #991b1b;
+      --warning: #f59e0b;
+      --warning-bg: #fef3c7;
+      --warning-text: #92400e;
+      --info: #3b82f6;
+      --info-bg: #dbeafe;
+      --info-text: #1e40af;
+      --success: #10b981;
+      --success-bg: #dcfce7;
+      --success-text: #166534;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+    /* Menu Lateral */
+    aside.sidebar { 
+      width: 260px; 
+      background-color: var(--secondary); 
+      color: white; 
+      display: flex; 
+      flex-direction: column; 
+      padding: 20px; 
+      flex-shrink: 0; 
+    }
+
+    .sidebar-brand { 
+      font-size: 1.15rem; 
+      font-weight: 700; 
+      margin-bottom: 30px; 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      color: var(--primary); 
+    }
+
+    .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .sidebar-menu li a { 
+      color: #94a3b8; 
+      text-decoration: none; 
+      padding: 11px 14px; 
+      border-radius: 8px; 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      font-weight: 500; 
+      font-size: 0.88rem;
+      transition: all 0.2s; 
+    }
+
+    .sidebar-menu li a:hover { background-color: rgba(255, 255, 255, 0.06); color: white; }
+    .sidebar-menu li a.active { background-color: #334155; color: white; font-weight: 600; }
+    .sidebar-section-title { font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin: 12px 0 4px 14px; }
+
+    /* Área Principal */
+    .main-content { flex: 1; padding: 25px 30px; overflow-y: auto; height: 100vh; display: flex; flex-direction: column; gap: 24px; }
+    
+    .page-header { display: flex; justify-content: space-between; align-items: center; }
+    .page-header h1 { font-size: 1.55rem; color: var(--secondary); font-weight: 800; }
+    .page-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 3px; }
+    .header-badge { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; padding: 8px 14px; background: white; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; color: var(--secondary); box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+
+    /* Grid de Métricas Principais (KPIs) */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px -4px rgba(0,0,0,0.06); }
+
+    .kpi-card.danger { border-left: 5px solid var(--danger); }
+    .kpi-card.warning { border-left: 5px solid var(--warning); }
+    .kpi-card.info { border-left: 5px solid var(--info); }
+    .kpi-card.success { border-left: 5px solid var(--success); }
+
+    .kpi-header { display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .kpi-card.danger .kpi-icon { background: var(--danger-bg); color: var(--danger); }
+    .kpi-card.warning .kpi-icon { background: var(--warning-bg); color: var(--warning-text); }
+    .kpi-card.info .kpi-icon { background: var(--info-bg); color: var(--info); }
+    .kpi-card.success .kpi-icon { background: var(--success-bg); color: var(--success-dark); }
+
+    .kpi-value { font-size: 1.85rem; font-weight: 800; color: var(--secondary); line-height: 1; }
+    .kpi-footer { font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-top: 2px; }
+
+    /* Seção de Alertas Críticos */
+    .alerts-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .alert-banner {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-left: 4px solid var(--danger);
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      animation: pulseAlert 2.5s infinite;
+    }
+    @keyframes pulseAlert {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.2); }
+      70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .alert-banner-content { display: flex; align-items: center; gap: 12px; }
+    .alert-banner-icon { color: var(--danger); flex-shrink: 0; }
+    .alert-banner-text h4 { font-size: 0.92rem; color: var(--danger-text); font-weight: 700; }
+    .alert-banner-text p { font-size: 0.8rem; color: #b91c1c; margin-top: 2px; }
+    .alert-banner-btn { background: var(--danger); color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; transition: background 0.2s; }
+    .alert-banner-btn:hover { background: #dc2626; }
+
+    /* Grid de Módulos (Cards de Acesso Rápido) */
+    .section-title { font-size: 1.15rem; font-weight: 700; color: var(--secondary); display: flex; align-items: center; gap: 8px; }
+    
+    .cards-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); 
+      gap: 16px; 
+    }
+
+    .dashboard-card { 
+      background: var(--card-bg); 
+      border: 1px solid var(--border); 
+      border-radius: 12px; 
+      padding: 18px 20px; 
+      cursor: pointer; 
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; 
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 190px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+
+    .dashboard-card:hover { 
+      transform: translateY(-3px); 
+      box-shadow: 0 10px 18px -4px rgba(0,0,0,0.07); 
+      border-color: var(--primary);
+    }
+
+    .dashboard-card .icon { 
+      color: var(--primary); 
+      margin-bottom: 10px; 
+    }
+
+    .dashboard-card h3 { 
+      font-size: 0.98rem; 
+      font-weight: 700;
+      color: var(--secondary); 
+      margin-bottom: 6px; 
+    }
+
+    .dashboard-card p { 
+      color: var(--text-muted); 
+      font-size: 0.8rem; 
+      line-height: 1.4; 
+      flex: 1;
+    }
+
+    .dashboard-card .metric { 
+      font-weight: 700; 
+      color: var(--secondary); 
+      font-size: 0.82rem; 
+      border-top: 1px solid #f1f5f9; 
+      padding-top: 10px; 
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Tabela Unificada de Pendências e Alertas */
+    .unified-table-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+    }
+
+    .table-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 6px;
+      background: #f1f5f9;
+      padding: 4px;
+      border-radius: 8px;
+    }
+
+    .filter-btn {
+      background: transparent;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .filter-btn:hover { color: var(--secondary); }
+    .filter-btn.active { background: white; color: var(--secondary); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .filter-btn.active.danger-active { color: var(--danger); }
+    .filter-btn.active.warning-active { color: var(--warning-text); }
+
+    .search-input {
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      outline: none;
+      width: 240px;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--primary); }
+
+    .table-container { overflow-x: auto; max-height: 420px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { background: #f8fafc; color: var(--secondary); font-weight: 600; padding: 12px 14px; font-size: 0.82rem; position: sticky; top: 0; z-index: 5; border-bottom: 2px solid var(--border); white-space: nowrap; }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 0.84rem; vertical-align: middle; }
+    tr:hover { background-color: #f8fafc; }
+
+    /* Badges de Status e Módulo */
+    .badge-module {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-module.operacao { background: #e0e7ff; color: #3730a3; }
+    .badge-module.notebooks { background: #ede9fe; color: #5b21b6; }
+    .badge-module.tvs { background: #cffafe; color: #155e75; }
+    .badge-module.agenda { background: #fef3c7; color: #92400e; }
+
+    .badge-urgency {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .badge-urgency.atrasado { background: var(--danger-bg); color: var(--danger-text); }
+    .badge-urgency.hoje { background: var(--warning-bg); color: var(--warning-text); }
+    .badge-urgency.pendente { background: #f1f5f9; color: #475569; }
+    .badge-urgency.ok { background: var(--success-bg); color: var(--success-text); }
+
+    .btn-table-action {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--secondary);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-table-action:hover { background: var(--secondary); color: white; border-color: var(--secondary); }
+  </style>
+</head>
+<body>
+
+  <!-- Menu Lateral -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <i data-lucide="box"></i>
+      <span>Almoxarifado 2.0</span>
+    </div>
+    
+    <ul class="sidebar-menu">
+      <li><a href="index.html" class="active"><i data-lucide="layout-dashboard"></i> Dashboard Geral</a></li>
+      <div class="sidebar-section-title">Módulos de Áudio & Vídeo</div>
+      <li><a href="index183.html"><i data-lucide="layers"></i> Inventário A&V (183)</a></li>
+      <li><a href="analytics.html"><i data-lucide="bar-chart-3"></i> Sysman Analytics</a></li>
+      <div class="sidebar-section-title">Controles Operacionais</div>
+      <li><a href="agenda.html"><i data-lucide="calendar"></i> Agenda de Eventos</a></li>
+      <li><a href="manutencao.html"><i data-lucide="wrench"></i> Manutenção Externa</a></li>
+      <li><a href="material de estudo.html"><i data-lucide="clipboard-list"></i> Listas de Estudos</a></li>
+      <li><a href="TVs em circulacao.html"><i data-lucide="tv"></i> Controle de TVs</a></li>
+      <li><a href="historico operacao.html"><i data-lucide="send"></i> Lançamentos Operação</a></li>
+      <li><a href="historico notebooks.html"><i data-lucide="monitor"></i> Lançamentos Notebooks</a></li>
+    </ul>
+  </aside>
+
+  <!-- Conteúdo Principal -->
+  <main class="main-content">
+    
+    <!-- Topo / Boas-vindas -->
+    <div class="page-header">
+      <div>
+        <h1>Dashboard Integrado do Almoxarifado</h1>
+        <p>Monitoramento central de pendências, prazos estourados, saídas e equipamentos</p>
+      </div>
+      <div class="header-badge" id="dataHojeBadge">
+        <i data-lucide="calendar"></i> <span id="dataAtualTxt">Carregando data...</span>
+      </div>
+    </div>
+
+    <!-- BANNER DE ALERTA DINÂMICO -->
+    <div class="alerts-container" id="alertsContainer"></div>
+
+    <!-- CARDS DE METRICAS PRINCIPAIS (KPIS) -->
+    <div class="kpi-grid">
+      
+      <!-- KPI 1: Prazos Estourados -->
+      <div class="kpi-card danger">
+        <div class="kpi-header">
+          <span>Prazo Estourado</span>
+          <div class="kpi-icon"><i data-lucide="alert-octagon"></i></div>
+        </div>
+        <div class="kpi-value" id="kpiAtrasados">0</div>
+        <div class="kpi-footer">Pendências que passaram da data prevista</div>
+      </div>
+
+      <!-- KPI 2: Total de Pendências -->
+      <div class="kpi-card warning">
+        <div class="kpi-header">
+          <span>Pendências Ativas</span>
+          <div class="kpi-icon"><i data-lucide="clock"></i></div>
+        </div>
+        <div class="kpi-value" id="kpiPendentes">0</div>
+        <div class="kpi-footer">Materiais e itens em uso sem devolução</div>
+      </div>
+
+      <!-- KPI 3: Vencendo Hoje / Próximos -->
+      <div class="kpi-card info">
+        <div class="kpi-header">
+          <span>Vencendo Hoje / Breve</span>
+          <div class="kpi-icon"><i data-lucide="calendar-clock"></i></div>
+        </div>
+        <div class="kpi-value" id="kpiVencendo">0</div>
+        <div class="kpi-footer">Previsões de entrega para hoje ou próximos 3 dias</div>
+      </div>
+
+      <!-- KPI 4: Manutenção Externa -->
+      <div class="kpi-card success">
+        <div class="kpi-header">
+          <span>Manutenção Externa</span>
+          <div class="kpi-icon"><i data-lucide="wrench"></i></div>
+        </div>
+        <div class="kpi-value" id="kpiManutencao">21 itens</div>
+        <div class="kpi-footer">Total em assistência: R$ 190.256,32</div>
+      </div>
+
+    </div>
+
+    <!-- MÓDULOS DE ACESSO RÁPIDO -->
+    <div>
+      <div class="section-title" style="margin-bottom: 14px;">
+        <i data-lucide="grid"></i> Módulos do Sistema
+      </div>
+      <div class="cards-grid">
+
+        <!-- Card 1: Inventário Áudio & Vídeo (Local 183) -->
+        <div class="dashboard-card" onclick="window.location.href='index183.html'">
+          <div class="icon" style="background:#e0f2fe; color:#0369a1;"><i data-lucide="layers"></i></div>
+          <h3>Inventário A&V (183)</h3>
+          <p>Controle de estoque de áudio, vídeo, foto, transferências e emissão de PDF.</p>
+          <div class="metric">
+            <span>Estoque A&V</span>
+            <span id="cardInventarioMetric" style="color: var(--primary); font-weight: 700;">Nuvem</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Sysman Analytics (Santuário) -->
+        <div class="dashboard-card" onclick="window.location.href='analytics.html'">
+          <div class="icon" style="background:#ede9fe; color:#6d28d9;"><i data-lucide="bar-chart-3"></i></div>
+          <h3>Sysman Analytics</h3>
+          <p>Mapeamento de equipamentos por setor e projeto em todo o Santuário Nacional.</p>
+          <div class="metric">
+            <span>Equipamentos</span>
+            <span id="cardAnalyticsMetric" style="color: var(--primary); font-weight: 700;">Analytics</span>
+          </div>
+        </div>
+
+        <!-- Card 3: Agenda de Eventos -->
+        <div class="dashboard-card" onclick="window.location.href='agenda.html'">
+          <div class="icon"><i data-lucide="calendar"></i></div>
+          <h3>Agenda de Eventos</h3>
+          <p>Controle de demandas de montagens, prazos críticos e comunicação de gargalos operacionais.</p>
+          <div class="metric">
+            <span>Demandas</span>
+            <span id="cardAgendaMetric" style="color: var(--primary); font-weight: 700;">9 Ativas</span>
+          </div>
+        </div>
+
+        <!-- Card 4: Manutenção Externa -->
+        <div class="dashboard-card" onclick="window.location.href='manutencao.html'">
+          <div class="icon"><i data-lucide="wrench"></i></div>
+          <h3>Manutenção Externa</h3>
+          <p>Itens em assistência externa técnica (Analisea, Shyurixpro e Fly Audio).</p>
+          <div class="metric">
+            <span>Assistências</span>
+            <span style="color: var(--primary); font-weight: 700;">R$ 190.256,32</span>
+          </div>
+        </div>
+
+        <!-- Card 5: Materiais de Estudos -->
+        <div class="dashboard-card" onclick="window.location.href='material de estudo.html'">
+          <div class="icon"><i data-lucide="clipboard-list"></i></div>
+          <h3>Materiais de Estudos</h3>
+          <p>Listas e kits de materiais utilizados em grandes eventos e celebrações.</p>
+          <div class="metric">
+            <span>Listas</span>
+            <span style="color: var(--primary); font-weight: 700;">Consulte aqui</span>
+          </div>
+        </div>
+
+        <!-- Card 6: Controle de TVs -->
+        <div class="dashboard-card" onclick="window.location.href='TVs em circulacao.html'">
+          <div class="icon"><i data-lucide="tv"></i></div>
+          <h3>Controle de TVs</h3>
+          <p>Gestão completa de televisores: TVs em circulação, em estoque e TVs novas.</p>
+          <div class="metric">
+            <span>TVs</span>
+            <span id="cardTvsMetric" style="color: var(--primary); font-weight: 700;">3 Módulos</span>
+          </div>
+        </div>
+
+        <!-- Card 7: Lançamentos Operação -->
+        <div class="dashboard-card" onclick="window.location.href='historico operacao.html'">
+          <div class="icon"><i data-lucide="send"></i></div>
+          <h3>Lançamentos Operação</h3>
+          <p>Saída e entrega de materiais por operador, local, aprovação e controle de OS.</p>
+          <div class="metric">
+            <span>Operação</span>
+            <span id="cardOperacaoMetric" style="color: var(--primary); font-weight: 700;">Histórico</span>
+          </div>
+        </div>
+
+        <!-- Card 8: Lançamentos de Notebooks -->
+        <div class="dashboard-card" onclick="window.location.href='historico notebooks.html'">
+          <div class="icon"><i data-lucide="monitor"></i></div>
+          <h3>Lançamentos de Notebooks</h3>
+          <p>Controle de empréstimo e devolução de notebooks Dell por colaborador e número de série.</p>
+          <div class="metric">
+            <span>Notebooks</span>
+            <span id="cardNotebooksMetric" style="color: var(--primary); font-weight: 700;">Histórico</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TABELA INTEGRADA DE PENDÊNCIAS & ALERTAS -->
+    <div class="unified-table-section">
+      <div class="table-controls">
+        <div class="section-title">
+          <i data-lucide="bell-ring"></i> Central Unificada de Pendências & Prazos
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="text" id="inpBuscaTabela" class="search-input" placeholder="Buscar por material, operador, local..." oninput="filtrarTabelaGeral()">
+          
+          <div class="filter-tabs">
+            <button class="filter-btn active danger-active" id="btnFiltroAtrasados" onclick="definirFiltro('atrasados')">
+              <i data-lucide="alert-circle" style="width: 14px;"></i> Atrasados (<span id="countAtrasadosTab">0</span>)
+            </button>
+            <button class="filter-btn" id="btnFiltroPendentes" onclick="definirFiltro('pendentes')">
+              <i data-lucide="clock" style="width: 14px;"></i> Pendentes (<span id="countPendentesTab">0</span>)
+            </button>
+            <button class="filter-btn" id="btnFiltroVencendo" onclick="definirFiltro('vencendo')">
+              <i data-lucide="calendar" style="width: 14px;"></i> Hoje / Breve (<span id="countVencendoTab">0</span>)
+            </button>
+            <button class="filter-btn" id="btnFiltroTodos" onclick="definirFiltro('todos')">
+              Todos (<span id="countTodosTab">0</span>)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Módulo</th>
+              <th>Material / Demanda</th>
+              <th>Responsável / Operador</th>
+              <th>Local / Destino</th>
+              <th>Data Saída</th>
+              <th>Previsão / Entrega</th>
+              <th>Situação / Prazo</th>
+              <th style="text-align: center;">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaGeralBody">
+            <tr>
+              <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Carregando dados unificados do almoxarifado...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let todosRegistros = [];
+    let filtroAtual = 'atrasados'; // padrão: focar nas urgências estouradas
+
+    // Exibe a data de hoje formatada no topo
+    const agora = new Date();
+    const opcoesData = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('dataAtualTxt').innerText = agora.toLocaleDateString('pt-BR', opcoesData);
+
+    function formatarDataExcel(valorData) {
+      if (!valorData) return '';
+      if (typeof valorData === 'number') {
+        const dataObj = XLSX.SSF.parse_date_code(valorData);
+        if (dataObj) {
+          const dia = String(dataObj.d).padStart(2, '0');
+          const mes = String(dataObj.m).padStart(2, '0');
+          return `${dia}/${mes}/${dataObj.y}`;
+        }
+      }
+      return String(valorData);
+    }
+
+    function converterParaDataObj(valor) {
+      if (!valor) return null;
+      if (typeof valor === 'number') {
+        const dataObj = XLSX.SSF.parse_date_code(valor);
+        if (dataObj) return new Date(dataObj.y, dataObj.m - 1, dataObj.d);
+      }
+      const str = String(valor).trim();
+      if (str.includes('/')) {
+        const p = str.split('/');
+        if (p.length === 3) return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+      }
+      if (str.includes('-')) {
+        const p = str.split('-');
+        if (p.length === 3) return new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
+      }
+      return null;
+    }
+
+    function diferencaEmDias(dataObj) {
+      if (!dataObj) return null;
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const target = new Date(dataObj);
+      target.setHours(0, 0, 0, 0);
+      const diffTime = target.getTime() - hoje.getTime();
+      return Math.round(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    function getColIdx(cabecalhos, terms, defaultIdx) {
+      if (!cabecalhos || cabecalhos.length === 0) return defaultIdx;
+      for (let i = 0; i < cabecalhos.length; i++) {
+        const col = String(cabecalhos[i] || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        for (const term of terms) {
+          const t = term.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          if (col.includes(t)) return i;
+        }
+      }
+      return defaultIdx;
+    }
+
+    // Carregador Unificado
+    async function carregarTodosDados() {
+      todosRegistros = [];
+
+      // 1. Histórico Operação (Auto-Save ou Excel)
+      try {
+        let rows = null;
+        const salvoOp = localStorage.getItem('db_historico_operacao');
+        if (salvoOp) {
+          try { rows = JSON.parse(salvoOp); } catch (e) {}
+        }
+        
+        if (!rows || rows.length === 0) {
+          const resOp = await fetch('historico_operacao.xlsx');
+          if (resOp.ok) {
+            const buf = await resOp.arrayBuffer();
+            const wb = XLSX.read(buf, { type: 'array' });
+            rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+          }
+        }
+
+        if (rows && rows.length > 1) {
+          const heads = rows[0];
+          const iOp = getColIdx(heads, ['operador', 'colaborador'], 0);
+          const iMat = getColIdx(heads, ['material', 'equipamento'], 1);
+          const iSai = getColIdx(heads, ['saida'], 2);
+          const iLoc = getColIdx(heads, ['local'], 4);
+          const iEnt = getColIdx(heads, ['entrega', 'retorno'], 5);
+          const iStat = getColIdx(heads, ['status'], 6);
+          const iOs = getColIdx(heads, ['os', 'ordem'], 8);
+
+          for (let r = 1; r < rows.length; r++) {
+            const row = rows[r];
+            if (!row || row.length === 0) continue;
+            const dtEntObj = converterParaDataObj(row[iEnt]);
+            const statusTxt = String(row[iStat] || 'Pendente').trim();
+
+            todosRegistros.push({
+              modulo: 'Operação',
+              moduloClass: 'operacao',
+              icone: 'send',
+              link: 'historico operacao.html',
+              material: row[iMat] || 'Material de Operação',
+              responsavel: row[iOp] || 'Operador',
+              local: row[iLoc] || 'Local de Operação',
+              dataSaida: formatarDataExcel(row[iSai]),
+              dataEntrega: formatarDataExcel(row[iEnt]),
+              dataObj: dtEntObj,
+              diasDiff: diferencaEmDias(dtEntObj),
+              status: statusTxt,
+              isDevolvido: statusTxt.toLowerCase().includes('devolvido') || statusTxt.toLowerCase().includes('concluido'),
+              os: row[iOs] || ''
+            });
+          }
+          document.getElementById('cardOperacaoMetric').innerText = `${rows.length - 1} Registros`;
+        }
+      } catch (e) { console.warn('Erro ao carregar historico_operacao:', e); }
+
+      // 2. Histórico Notebooks (Auto-Save ou Excel)
+      try {
+        let rows = null;
+        const salvoNb = localStorage.getItem('db_historico_notebooks');
+        if (salvoNb) {
+          try { rows = JSON.parse(salvoNb); } catch (e) {}
+        }
+
+        if (!rows || rows.length === 0) {
+          const resNb = await fetch('historico_notebooks.xlsx');
+          if (resNb.ok) {
+            const buf = await resNb.arrayBuffer();
+            const wb = XLSX.read(buf, { type: 'array' });
+            rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+          }
+        }
+
+        if (rows && rows.length > 1) {
+          const heads = rows[0];
+          const iCol = getColIdx(heads, ['colaborador', 'operador', 'nome'], 0);
+          const iMat = getColIdx(heads, ['material', 'modelo'], 1);
+          const iSer = getColIdx(heads, ['serie', 'n° serie'], 2);
+          const iLoc = getColIdx(heads, ['local'], 3);
+          const iSai = getColIdx(heads, ['saida'], 4);
+          const iEnt = getColIdx(heads, ['entrega'], 5);
+          const iStat = getColIdx(heads, ['status'], 6);
+          const iOs = getColIdx(heads, ['os', 'ordem'], 8);
+
+          for (let r = 1; r < rows.length; r++) {
+            const row = rows[r];
+            if (!row || row.length === 0) continue;
+            const dtEntObj = converterParaDataObj(row[iEnt]);
+            const statusTxt = String(row[iStat] || 'Pendente').trim();
+
+            todosRegistros.push({
+              modulo: 'Notebooks',
+              moduloClass: 'notebooks',
+              icone: 'laptop',
+              link: 'historico notebooks.html',
+              material: `${row[iMat] || 'Notebook'} (S/N: ${row[iSer] || '-'})`,
+              responsavel: row[iCol] || 'Colaborador',
+              local: row[iLoc] || 'Setor',
+              dataSaida: formatarDataExcel(row[iSai]),
+              dataEntrega: formatarDataExcel(row[iEnt]),
+              dataObj: dtEntObj,
+              diasDiff: diferencaEmDias(dtEntObj),
+              status: statusTxt,
+              isDevolvido: statusTxt.toLowerCase().includes('devolvido') || statusTxt.toLowerCase().includes('concluido'),
+              os: row[iOs] || ''
+            });
+          }
+          document.getElementById('cardNotebooksMetric').innerText = `${rows.length - 1} Registros`;
+        }
+      } catch (e) { console.warn('Erro ao carregar historico_notebooks:', e); }
+
+      // 3. Controle de TVs (Circulação - Auto-Save ou Excel)
+      try {
+        let rows = null;
+        const salvoTv = localStorage.getItem('db_tvs_circulacao');
+        if (salvoTv) {
+          try { rows = JSON.parse(salvoTv); } catch (e) {}
+        }
+
+        if (!rows || rows.length === 0) {
+          const arquivosTv = ['tvs_em_circulação.xlsx', 'tvs_em_circulacao.xlsx', encodeURIComponent('tvs_em_circulação.xlsx')];
+          for (const arq of arquivosTv) {
+            try {
+              const resTv = await fetch(arq);
+              if (resTv.ok) {
+                const buf = await resTv.arrayBuffer();
+                const wb = XLSX.read(buf, { type: 'array' });
+                rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+                break;
+              }
+            } catch (e) {}
+          }
+        }
+
+        if (rows && rows.length > 1) {
+          const heads = rows[0];
+          const iCod = getColIdx(heads, ['codigo', 'cod'], 0);
+          const iMarca = getColIdx(heads, ['marca', 'fabricante'], 1);
+          const iMod = getColIdx(heads, ['modelo'], 2);
+          const iSer = getColIdx(heads, ['sn', 'serie', 'n° serie', 'nº serie', 'patrimonio'], 3);
+          const iEstoque = getColIdx(heads, ['estoque', 'unidade', 'un'], 4);
+          const iLoc = getColIdx(heads, ['retirada', 'armazenada', 'local', 'instalacao'], 5);
+          const iObs = getColIdx(heads, ['obs', 'observac'], 6);
+          const iPol = getColIdx(heads, ['polegada', 'pol'], 7);
+          const iStat = getColIdx(heads, ['situac', 'status'], 8);
+
+          for (let r = 1; r < rows.length; r++) {
+            const row = rows[r];
+            if (!row || row.length === 0 || row.every(c => c === undefined || c === null || String(c).trim() === '')) continue;
+
+            const statusTxt = String(row[iStat] || 'Em Circulação').trim();
+            const marca = String(row[iMarca] || '').trim();
+            const modelo = String(row[iMod] || '').trim();
+            const pol = String(row[iPol] || '').trim();
+            const sn = String(row[iSer] || '').trim();
+
+            let nomeMaterial = `${marca} ${modelo}`.trim() || 'Smart TV';
+            if (pol) nomeMaterial += ` (${pol})`;
+            if (sn && sn !== 'XX') nomeMaterial += ` [SN: ${sn}]`;
+
+            const localTxt = String(row[iLoc] || 'Almoxarifado').trim();
+            const obsTxt = String(row[iObs] || '').trim();
+
+            todosRegistros.push({
+              modulo: 'TVs',
+              moduloClass: 'tvs',
+              icone: 'tv',
+              link: 'TVs em circulacao.html',
+              material: nomeMaterial,
+              responsavel: obsTxt && obsTxt !== '-' ? obsTxt : 'Equipe / Almoxarifado',
+              local: localTxt,
+              dataSaida: '-',
+              dataEntrega: '-',
+              dataObj: null,
+              diasDiff: null,
+              status: statusTxt,
+              isDevolvido: statusTxt.toLowerCase().includes('ok') || statusTxt.toLowerCase().includes('instalad') || statusTxt.toLowerCase().includes('devolvido'),
+              os: '-'
+            });
+          }
+          const totalTvs = rows.slice(1).filter(r => r && r.some(c => c !== undefined && c !== null && String(c).trim() !== '')).length;
+          document.getElementById('cardTvsMetric').innerText = `${totalTvs} Registros`;
+        }
+      } catch (e) { console.warn('Erro ao carregar TVs:', e); }
+
+      // 4. Demandas da Agenda de Eventos (Auto-Save ou Padrão)
+      const demandasSalvas = localStorage.getItem('db_agenda');
+      const demandasAgenda = demandasSalvas ? JSON.parse(demandasSalvas) : [
+        { data: '2026-08-26', nome: 'Patrimoniar Caixas de Som Novas (Porto Itaguaçu)', cat: 'Patrimônio', status: 'Em Andamento', local: 'Porto Itaguaçu' },
+        { data: '2026-08-26', nome: 'Separar Material para Montagem de Iluminação', cat: 'Montagem', status: 'Em Andamento', local: 'Santuário' },
+        { data: '2026-08-27', nome: 'Separar Material para Jantar no Convento', cat: 'Evento', status: 'Em Andamento', local: 'Convento' },
+        { data: '2026-08-29', nome: 'Separar Material para Morro do Cruzeiro', cat: 'Evento', status: 'Em Andamento', local: 'Morro do Cruzeiro' },
+        { data: '2026-08-29', nome: 'Separar Material para Tribuna Sul - Rosário', cat: 'Evento', status: 'Em Andamento', local: 'Tribuna Sul' },
+        { data: '2026-09-04', nome: 'Fim dos Testes e Verificação - Inauguração Fachada Oeste', cat: 'Gargalo', status: 'Em Andamento', local: 'Fachada Oeste' }
+      ];
+
+      const demandasAtivas = demandasAgenda.filter(d => d.status !== 'Concluído');
+      document.getElementById('cardAgendaMetric').innerText = `${demandasAtivas.length} Ativas`;
+
+      demandasAgenda.forEach(d => {
+        const dtObj = converterParaDataObj(d.data);
+        todosRegistros.push({
+          modulo: 'Agenda',
+          moduloClass: 'agenda',
+          icone: 'calendar',
+          link: 'agenda.html',
+          material: d.nome,
+          responsavel: d.cat || 'Demanda',
+          local: d.local || 'Geral',
+          dataSaida: '-',
+          dataEntrega: formatarDataExcel(d.data),
+          dataObj: dtObj,
+          diasDiff: diferencaEmDias(dtObj),
+          status: d.status,
+          isDevolvido: d.status === 'Concluído',
+          os: '-'
+        });
+      });
+
+      // 5. Manutenção Externa (Auto-Save)
+      const manutSalva = localStorage.getItem('manutencao_db');
+      if (manutSalva) {
+        try {
+          const itensManut = JSON.parse(manutSalva);
+          let totalValor = 0;
+          itensManut.forEach(i => totalValor += ((i.valor || 0) * (i.qtd || 1)));
+          document.getElementById('kpiManutencao').innerText = `${itensManut.length} itens`;
+          document.querySelector('.kpi-card.success .kpi-footer').innerText = `Total em assistência: ${totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+        } catch (e) {}
+      }
+
+      // 6. Inventário A&V (183) e Sysman Analytics (Supabase)
+      try {
+        if (window.supabase) {
+          const sbClient = window.supabase.createClient(
+            'https://tocmqlsicxuxfkiptgaj.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvY21xbHNpY3h1eGZraXB0Z2FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTIyODEsImV4cCI6MjA5OTYyODI4MX0.B-UKh4qMQG02guuJhIlI-ZB0d4OjlByFyfOoGISiqMY'
+          );
+
+          const { count: countInv } = await sbClient.from('inventario').select('*', { count: 'exact', head: true });
+          if (countInv !== null && countInv !== undefined) {
+            const el = document.getElementById('cardInventarioMetric');
+            if (el) el.innerText = `${countInv} Itens`;
+          }
+
+          const { count: countEq } = await sbClient.from('equipamentos').select('*', { count: 'exact', head: true });
+          if (countEq !== null && countEq !== undefined) {
+            const el = document.getElementById('cardAnalyticsMetric');
+            if (el) el.innerText = `${countEq} Equipamentos`;
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao carregar Supabase em index.html:', e);
+      }
+
+      processarMetricasEAlertas();
+      filtrarTabelaGeral();
+      lucide.createIcons();
+    }
+
+    function processarMetricasEAlertas() {
+      let qtdAtrasados = 0;
+      let qtdPendentes = 0;
+      let qtdVencendoHojeOuBreve = 0;
+      let itensCriticosAtrasados = [];
+
+      todosRegistros.forEach(item => {
+        if (!item.isDevolvido) {
+          qtdPendentes++;
+
+          if (item.diasDiff !== null) {
+            if (item.diasDiff < 0) {
+              qtdAtrasados++;
+              itensCriticosAtrasados.push(item);
+            } else if (item.diasDiff === 0 || item.diasDiff <= 3) {
+              qtdVencendoHojeOuBreve++;
+            }
+          }
+        }
+      });
+
+      // Atualiza KPIs
+      document.getElementById('kpiAtrasados').innerText = qtdAtrasados;
+      document.getElementById('kpiPendentes').innerText = qtdPendentes;
+      document.getElementById('kpiVencendo').innerText = qtdVencendoHojeOuBreve;
+
+      // Atualiza Abas do Filtro
+      document.getElementById('countAtrasadosTab').innerText = qtdAtrasados;
+      document.getElementById('countPendentesTab').innerText = qtdPendentes;
+      document.getElementById('countVencendoTab').innerText = qtdVencendoHojeOuBreve;
+      document.getElementById('countTodosTab').innerText = todosRegistros.length;
+
+      // Renderiza Banner de Alerta se houver atrasos
+      const alertContainer = document.getElementById('alertsContainer');
+      alertContainer.innerHTML = '';
+
+      if (qtdAtrasados > 0) {
+        const primeiroAtrasado = itensCriticosAtrasados[0];
+        const diasAbs = Math.abs(primeiroAtrasado.diasDiff);
+        
+        alertContainer.innerHTML = `
+          <div class="alert-banner">
+            <div class="alert-banner-content">
+              <div class="alert-banner-icon"><i data-lucide="alert-triangle" style="width: 28px; height: 28px;"></i></div>
+              <div class="alert-banner-text">
+                <h4>ATENÇÃO: Existem ${qtdAtrasados} pendências com prazo de entrega estourado!</h4>
+                <p>Urgente: <b>"${primeiroAtrasado.material}"</b> (${primeiroAtrasado.responsavel} - ${primeiroAtrasado.local}) está atrasado há <b>${diasAbs} dia(s)</b> (Previsto: ${primeiroAtrasado.dataEntrega}).</p>
+              </div>
+            </div>
+            <a href="${primeiroAtrasado.link}" class="alert-banner-btn"><i data-lucide="arrow-right" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> Resolver no Módulo</a>
+          </div>
+        `;
+      }
+    }
+
+    function definirFiltro(tipo) {
+      filtroAtual = tipo;
+      
+      document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active', 'danger-active', 'warning-active'));
+      
+      if (tipo === 'atrasados') {
+        document.getElementById('btnFiltroAtrasados').classList.add('active', 'danger-active');
+      } else if (tipo === 'pendentes') {
+        document.getElementById('btnFiltroPendentes').classList.add('active', 'warning-active');
+      } else if (tipo === 'vencendo') {
+        document.getElementById('btnFiltroVencendo').classList.add('active');
+      } else {
+        document.getElementById('btnFiltroTodos').classList.add('active');
+      }
+
+      filtrarTabelaGeral();
+    }
+
+    function filtrarTabelaGeral() {
+      const termoBusca = (document.getElementById('inpBuscaTabela').value || '').toLowerCase().trim();
+      const tbody = document.getElementById('tabelaGeralBody');
+      tbody.innerHTML = '';
+
+      let listaFiltrada = todosRegistros.filter(item => {
+        // Filtro por categoria
+        if (filtroAtual === 'atrasados') {
+          if (item.isDevolvido || item.diasDiff === null || item.diasDiff >= 0) return false;
+        } else if (filtroAtual === 'pendentes') {
+          if (item.isDevolvido) return false;
+        } else if (filtroAtual === 'vencendo') {
+          if (item.isDevolvido || item.diasDiff === null || item.diasDiff < 0 || item.diasDiff > 3) return false;
+        }
+
+        // Filtro por busca textual
+        if (termoBusca) {
+          const textoCompleto = `${item.modulo} ${item.material} ${item.responsavel} ${item.local} ${item.status} ${item.os}`.toLowerCase();
+          if (!textoCompleto.includes(termoBusca)) return false;
+        }
+
+        return true;
+      });
+
+      if (listaFiltrada.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 25px;">
+              <i data-lucide="check-circle" style="color: var(--success); width: 24px; height: 24px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>
+              Nenhuma pendência encontrada para este filtro.
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      listaFiltrada.forEach(item => {
+        let badgeUrgencia = '';
+        if (item.isDevolvido) {
+          badgeUrgencia = `<span class="badge-urgency ok"><i data-lucide="check" style="width: 12px;"></i> Devolvido / OK</span>`;
+        } else if (item.diasDiff !== null && item.diasDiff < 0) {
+          const dias = Math.abs(item.diasDiff);
+          badgeUrgencia = `<span class="badge-urgency atrasado"><i data-lucide="alert-octagon" style="width: 12px;"></i> Atrasado (${dias}d)</span>`;
+        } else if (item.diasDiff === 0) {
+          badgeUrgencia = `<span class="badge-urgency hoje"><i data-lucide="clock" style="width: 12px;"></i> Vence Hoje!</span>`;
+        } else if (item.diasDiff !== null && item.diasDiff <= 3) {
+          badgeUrgencia = `<span class="badge-urgency hoje"><i data-lucide="calendar" style="width: 12px;"></i> Vence em ${item.diasDiff}d</span>`;
+        } else {
+          badgeUrgencia = `<span class="badge-urgency pendente"><i data-lucide="hourglass" style="width: 12px;"></i> ${item.status}</span>`;
+        }
+
+        tbody.innerHTML += `
+          <tr>
+            <td><span class="badge-module ${item.moduloClass}"><i data-lucide="${item.icone}" style="width: 11px;"></i> ${item.modulo}</span></td>
+            <td><b>${item.material}</b></td>
+            <td>${item.responsavel}</td>
+            <td>${item.local}</td>
+            <td style="color: var(--text-muted);">${item.dataSaida || '-'}</td>
+            <td><b>${item.dataEntrega || '-'}</b></td>
+            <td>${badgeUrgencia}</td>
+            <td style="text-align: center;">
+              <a href="${item.link}" class="btn-table-action" title="Abrir módulo">
+                Ver <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
+              </a>
+            </td>
+          </tr>
+        `;
+      });
+
+      lucide.createIcons();
+    }
+
+    // Inicialização
+    carregarTodosDados();
+  </script>
+</body>
+</html>

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histórico de Notebooks - Almoxarifado 2.0</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Ícones Lucide -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <!-- Biblioteca SheetJS para ler Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --secondary: #1e293b;
+      --bg-main: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #334155;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --warning-bg: #fef3c7;
+      --warning-text: #d97706;
+      --success-bg: #dcfce7;
+      --success-text: #15803d;
+      --danger: #ef4444;
+      --danger-light: #fee2e2;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+    /* Menu Lateral */
+    aside.sidebar { width: 260px; background-color: var(--secondary); color: white; display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
+    .sidebar-brand { font-size: 1.1rem; font-weight: 700; margin-bottom: 30px; display: flex; align-items: center; gap: 10px; color: var(--primary); }
+    .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .sidebar-menu li a { color: #94a3b8; text-decoration: none; padding: 12px 15px; border-radius: 8px; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 0.9rem; transition: all 0.2s; }
+    .sidebar-menu li a:hover { background-color: rgba(255, 255, 255, 0.05); color: white; }
+    .sidebar-menu li a.active { background-color: #334155; color: white; }
+
+    /* Conteúdo Principal */
+    .main-content { flex: 1; padding: 30px; overflow-y: auto; height: 100vh; display: flex; flex-direction: column; }
+    .page-header { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+    .page-header h1 { font-size: 1.5rem; color: var(--secondary); font-weight: 700; }
+    .page-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 4px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+
+    /* Botões */
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 9px 16px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: background 0.2s; }
+    .btn-primary:hover { background: var(--primary-dark); }
+
+    .btn-back { background: white; color: var(--secondary); border: 1px solid var(--border); padding: 9px 16px; border-radius: 8px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; }
+    .btn-back:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+    /* Tabela Estilo Card */
+    .table-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; flex: 1; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+    .table-container { overflow: auto; flex: 1; }
+    
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { background: #f8fafc; color: var(--secondary); font-weight: 600; padding: 12px 14px; font-size: 0.85rem; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--border); white-space: nowrap; }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    tr:hover { background-color: #f8fafc; }
+
+    /* Botões de Ação na Tabela */
+    .action-buttons { display: flex; gap: 8px; align-items: center; }
+    .btn-action { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 6px; color: var(--text-muted); transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+    .btn-action.edit:hover { background: #e0f2fe; color: #0284c7; }
+    .btn-action.delete:hover { background: var(--danger-light); color: var(--danger); }
+
+    /* Select Interativo de Status */
+    select.status-badge {
+      border: none; outline: none; cursor: pointer; font-family: inherit; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s;
+    }
+    select.status-badge.devolvido { background-color: var(--success-bg); color: var(--success-text); }
+    select.status-badge.pendente { background-color: var(--warning-bg); color: var(--warning-text); }
+
+    /* Badge de Info do topo */
+    .info-badge { font-size: 0.85rem; padding: 6px 12px; border-radius: 6px; background: #e2e8f0; color: #475569; font-weight: 600; }
+    .info-badge.success { background: #dcfce7; color: #15803d; }
+    .info-badge.error { background: #fee2e2; color: #b91c1c; }
+
+    /* Estrutura do Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-overlay.active { display: flex; }
+    .modal-card { background: white; border-radius: 16px; width: 100%; max-width: 650px; padding: 28px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal-header h2 { font-size: 1.25rem; color: var(--secondary); font-weight: 700; }
+    .modal-close { background: transparent; border: none; font-size: 1.2rem; color: var(--text-muted); cursor: pointer; }
+
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full-width { grid-column: span 2; }
+    .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--secondary); }
+    .form-group input, .form-group select { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem; outline: none; transition: border 0.2s; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+
+    .btn-submit { width: 100%; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; margin-top: 20px; transition: background 0.2s; }
+    .btn-submit:hover { background: var(--primary-dark); }
+  </style>
+</head>
+<body>
+
+  <!-- Menu Lateral -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <i data-lucide="box"></i>
+      <span>Almoxarifado 2.0</span>
+    </div>
+    <ul class="sidebar-menu">
+      <li><a href="index.html"><i data-lucide="layout-dashboard"></i> Dashboard Geral</a></li>
+      <li><a href="agenda.html"><i data-lucide="calendar"></i> Agenda de Eventos</a></li>
+      <li><a href="manutencao.html"><i data-lucide="wrench"></i> Manutenção Externa</a></li>
+      <li><a href="material de estudo.html"><i data-lucide="clipboard-list"></i> Listas de Estudos</a></li>
+      <li><a href="TVs em circulacao.html"><i data-lucide="tv"></i> Controle de TVs</a></li>
+      <li><a href="historico operacao.html"><i data-lucide="send"></i> Lançamentos Operação</a></li>
+      <li><a href="historico notebooks.html" class="active"><i data-lucide="monitor"></i> Lançamentos Notebooks</a></li>
+    </ul>
+  </aside>
+
+  <!-- Conteúdo Principal -->
+  <main class="main-content">
+    
+    <div class="page-header">
+      <div>
+        <h1>Histórico de Notebooks</h1>
+        <p>Controle de saída, devolução e histórico de notebooks Dell por colaborador</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-primary" onclick="openModalNovo()"><i data-lucide="plus"></i> Novo Lançamento</button>
+        <input type="file" id="fileInputExcel" accept=".xlsx,.xls" style="display:none" onchange="carregarExcelDoArquivo(this)">
+        <button id="btnCarregarArquivo" class="btn-back" style="display:none" onclick="document.getElementById('fileInputExcel').click()"><i data-lucide="upload"></i> Carregar Planilha</button>
+        <div id="statusInfo" class="info-badge">Carregando planilha...</div>
+        <a href="index.html" class="btn-back"><i data-lucide="arrow-left"></i> Voltar</a>
+      </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="table-card">
+      <div class="table-container">
+        <table>
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL FLUTUANTE (NOVO / EDITAR) -->
+  <div id="modalLancamento" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modalTitulo">Lançamentos de Notebooks</h2>
+        <button class="modal-close" onclick="closeModal()"><i data-lucide="x"></i></button>
+      </div>
+
+      <form onsubmit="salvarLancamento(event)">
+        <!-- Guarda o índice da linha quando estiver editando -->
+        <input type="hidden" id="editIndex" value="-1">
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Colaborador</label>
+            <input type="text" id="inpColaborador" placeholder="Ex: Lucas / Eduardo" required>
+          </div>
+          <div class="form-group">
+            <label>Local</label>
+            <input type="text" id="inpLocal" placeholder="Ex: Estúdio / Sala Técnica" required>
+          </div>
+          
+          <div class="form-group">
+            <label>Material</label>
+            <input type="text" id="inpMaterial" placeholder="Ex: Notebook Dell Latitude" required>
+          </div>
+          <div class="form-group">
+            <label>N° Serie</label>
+            <input type="text" id="inpNumSerie" placeholder="Ex: 7X8Y9Z2" required>
+          </div>
+
+          <div class="form-group">
+            <label>Data Saída</label>
+            <input type="date" id="inpDataSaida" required>
+          </div>
+          <div class="form-group">
+            <label>Data Entrega</label>
+            <input type="date" id="inpDataEntrega">
+          </div>
+
+          <div class="form-group">
+            <label>Status de entrega</label>
+            <select id="inpStatusEntrega">
+              <option value="Pendente">Pendente</option>
+              <option value="Devolvido">Devolvido</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>N° Ordem de Serviço</label>
+            <input type="text" id="inpOS" placeholder="Ex: OS-2026/001">
+          </div>
+
+          <div class="form-group full-width">
+            <label>Observação</label>
+            <input type="text" id="inpObservacao" placeholder="Ex: Carregador + mouse incluídos">
+          </div>
+        </div>
+
+        <button type="submit" id="btnSubmitModal" class="btn-submit">Cadastrar</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const NOME_ARQUIVO = 'historico_notebooks.xlsx'; 
+    const STORAGE_KEY = 'db_historico_notebooks';
+    let dadosPlanilha = [];
+
+    // --- FUNÇÕES AUXILIARES DE TRATAMENTO DE DATAS E COLUNAS ---
+    function formatarDataExcel(valorData) {
+      if (!valorData) return '';
+      if (typeof valorData === 'number') {
+        const dataObj = XLSX.SSF.parse_date_code(valorData);
+        if (dataObj) {
+          const dia = String(dataObj.d).padStart(2, '0');
+          const mes = String(dataObj.m).padStart(2, '0');
+          return `${dia}/${mes}/${dataObj.y}`;
+        }
+      }
+      return valorData;
+    }
+
+    function formatarDataParaInput(dataBr) {
+      if (!dataBr) return '';
+      const partes = String(dataBr).split('/');
+      if (partes.length === 3) {
+        return `${partes[2]}-${partes[1]}-${partes[0]}`;
+      }
+      return '';
+    }
+
+    function formatarDataParaTabela(dataInput) {
+      if (!dataInput) return '';
+      const partes = String(dataInput).split('-');
+      if (partes.length === 3) {
+        return `${partes[2]}/${partes[1]}/${partes[0]}`;
+      }
+      return dataInput;
+    }
+
+    function getColIdx(cabecalhos, termos, defaultIdx) {
+      if (!cabecalhos || cabecalhos.length === 0) return defaultIdx;
+      for (let i = 0; i < cabecalhos.length; i++) {
+        const col = String(cabecalhos[i] || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (termos.some(t => col.includes(t))) {
+          return i;
+        }
+      }
+      return defaultIdx;
+    }
+
+    function salvarStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dadosPlanilha));
+      } catch (e) {
+        console.error("Erro ao salvar no localStorage:", e);
+      }
+    }
+
+    async function carregarExcel() {
+      const statusElement = document.getElementById('statusInfo');
+      
+      // 1. Tenta carregar do Auto-Save (localStorage)
+      const salvo = localStorage.getItem(STORAGE_KEY);
+      if (salvo) {
+        try {
+          dadosPlanilha = JSON.parse(salvo);
+          if (dadosPlanilha && dadosPlanilha.length > 0) {
+            renderizarTabela(dadosPlanilha);
+            statusElement.className = "info-badge success";
+            statusElement.innerText = `💾 Auto-Save (${dadosPlanilha.length - 1} registros)`;
+            return;
+          }
+        } catch (err) {
+          console.warn("Falha ao ler cache local de notebooks...", err);
+        }
+      }
+
+      // 2. Tenta carregar via fetch (funciona em servidor local ou Chrome com --allow-file-access)
+      try {
+        const response = await fetch(NOME_ARQUIVO);
+        if (!response.ok) throw new Error("Arquivo não encontrado.");
+        
+        const arrayBuffer = await response.arrayBuffer();
+        processarArrayBuffer(arrayBuffer);
+        
+      } catch (error) {
+        // 3. Fetch bloqueado por CORS (file://) — pede ao usuário para selecionar o arquivo
+        console.warn("Fetch bloqueado (CORS). Usando seleção manual de arquivo.", error);
+        statusElement.className = "info-badge error";
+        statusElement.innerText = "⚠️ Clique em 'Carregar Planilha'";
+        document.getElementById('btnCarregarArquivo').style.display = 'inline-flex';
+      }
+    }
+
+    function carregarExcelDoArquivo(input) {
+      const statusElement = document.getElementById('statusInfo');
+      const file = input.files[0];
+      if (!file) return;
+
+      statusElement.className = "info-badge";
+      statusElement.innerText = "Carregando...";
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const arrayBuffer = e.target.result;
+          processarArrayBuffer(arrayBuffer);
+          document.getElementById('btnCarregarArquivo').style.display = 'none';
+        } catch(err) {
+          statusElement.className = "info-badge error";
+          statusElement.innerText = "Erro ao processar planilha";
+          console.error(err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function processarArrayBuffer(arrayBuffer) {
+      const statusElement = document.getElementById('statusInfo');
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const primeiraAba = workbook.Sheets[workbook.SheetNames[0]];
+      dadosPlanilha = XLSX.utils.sheet_to_json(primeiraAba, { header: 1 });
+      
+      if (dadosPlanilha.length === 0) {
+        statusElement.className = "info-badge error";
+        statusElement.innerText = "Planilha vazia";
+        return;
+      }
+
+      salvarStorage();
+      renderizarTabela(dadosPlanilha);
+      statusElement.className = "info-badge success";
+      statusElement.innerText = `✅ Carregado (${dadosPlanilha.length - 1} registros)`;
+    }
+
+    function renderizarTabela(dados) {
+      const thead = document.getElementById('tableHead');
+      const tbody = document.getElementById('tableBody');
+
+      thead.innerHTML = '';
+      tbody.innerHTML = '';
+
+      if (!dados || dados.length === 0) return;
+
+      const cabecalhos = dados[0];
+
+      // Renderiza Cabeçalho + Coluna de Ações
+      let trHead = '<tr>';
+      cabecalhos.forEach(coluna => {
+        trHead += `<th>${coluna || ''}</th>`;
+      });
+      trHead += '<th style="text-align: center;">Ações</th></tr>';
+      thead.innerHTML = trHead;
+
+      // Renderiza Linhas
+      for (let i = 1; i < dados.length; i++) {
+        const linha = dados[i];
+        if (!linha || linha.length === 0) continue;
+
+        let trBody = '<tr>';
+        for (let j = 0; j < cabecalhos.length; j++) {
+          let valor = linha[j] !== undefined ? linha[j] : '';
+          const nomeColuna = String(cabecalhos[j] || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+          if (nomeColuna.includes('data')) {
+            valor = formatarDataExcel(valor);
+          }
+
+          if (nomeColuna.includes('status')) {
+            const statusTexto = String(valor).trim().toLowerCase();
+            const classeBadge = statusTexto === 'devolvido' ? 'devolvido' : 'pendente';
+
+            trBody += `
+              <td>
+                <select class="status-badge ${classeBadge}" onchange="alterarStatusDirect(this, ${i}, ${j})">
+                  <option value="Pendente" ${statusTexto === 'pendente' ? 'selected' : ''}>Pendente</option>
+                  <option value="Devolvido" ${statusTexto === 'devolvido' ? 'selected' : ''}>Devolvido</option>
+                </select>
+              </td>
+            `;
+          } else {
+            trBody += `<td>${valor}</td>`;
+          }
+        }
+
+        // Coluna com Botões Editar e Excluir
+        trBody += `
+          <td style="text-align: center;">
+            <div class="action-buttons">
+              <button class="btn-action edit" onclick="openModalEditar(${i})" title="Editar Lançamento">
+                <i data-lucide="pencil" style="width: 16px; height: 16px;"></i>
+              </button>
+              <button class="btn-action delete" onclick="excluirLancamento(${i})" title="Excluir Lançamento">
+                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+              </button>
+            </div>
+          </td>
+        `;
+
+        trBody += '</tr>';
+        tbody.innerHTML += trBody;
+      }
+
+      lucide.createIcons();
+    }
+
+    function alterarStatusDirect(selectElement, indexLinha, indexColuna) {
+      const valor = selectElement.value;
+      selectElement.classList.remove('devolvido', 'pendente');
+      selectElement.classList.add(valor.toLowerCase() === 'devolvido' ? 'devolvido' : 'pendente');
+      
+      // Atualiza na memória e persiste
+      dadosPlanilha[indexLinha][indexColuna] = valor;
+      salvarStorage();
+    }
+
+    /* Modais e Ações */
+    function openModalNovo() {
+      document.getElementById('editIndex').value = "-1";
+      document.getElementById('modalTitulo').innerText = "Lançamentos de Notebooks";
+      document.getElementById('btnSubmitModal').innerText = "Cadastrar";
+      
+      // Limpa formulário
+      const form = document.querySelector('#modalLancamento form');
+      form.reset();
+      document.getElementById('inpDataSaida').valueAsDate = new Date();
+
+      document.getElementById('modalLancamento').classList.add('active');
+    }
+
+    function openModalEditar(index) {
+      const linha = dadosPlanilha[index];
+      if (!linha) return;
+
+      const cabecalhos = dadosPlanilha[0] || [];
+
+      const idxColab = getColIdx(cabecalhos, ['colaborador', 'operador', 'nome'], 0);
+      const idxMat = getColIdx(cabecalhos, ['material', 'equipamento', 'modelo', 'materal'], 1);
+      const idxSer = getColIdx(cabecalhos, ['serie', 'patrimonio', 'n° serie', 'nº serie', 'tag'], 2);
+      const idxLoc = getColIdx(cabecalhos, ['local', 'setor', 'destino'], 3);
+      const idxDtSai = getColIdx(cabecalhos, ['saida', 'data saida'], 4);
+      const idxDtEnt = getColIdx(cabecalhos, ['entrega', 'devolucao', 'data entrega'], 5);
+      const idxStat = getColIdx(cabecalhos, ['status', 'situacao'], 6);
+      const idxObs = getColIdx(cabecalhos, ['observacao', 'obs'], 7);
+      const idxOs = getColIdx(cabecalhos, ['ordem', 'servico', 'os'], 8);
+
+      document.getElementById('editIndex').value = index;
+      document.getElementById('modalTitulo').innerText = "Editar Lançamento";
+      document.getElementById('btnSubmitModal').innerText = "Salvar Alterações";
+
+      document.getElementById('inpColaborador').value = linha[idxColab] || '';
+      document.getElementById('inpMaterial').value = linha[idxMat] || '';
+      document.getElementById('inpNumSerie').value = linha[idxSer] || '';
+      document.getElementById('inpLocal').value = linha[idxLoc] || '';
+      document.getElementById('inpDataSaida').value = formatarDataParaInput(formatarDataExcel(linha[idxDtSai]));
+      document.getElementById('inpDataEntrega').value = formatarDataParaInput(formatarDataExcel(linha[idxDtEnt]));
+      document.getElementById('inpStatusEntrega').value = linha[idxStat] || 'Pendente';
+      document.getElementById('inpObservacao').value = linha[idxObs] || '';
+      document.getElementById('inpOS').value = linha[idxOs] || '';
+
+      document.getElementById('modalLancamento').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('modalLancamento').classList.remove('active');
+    }
+
+    function salvarLancamento(e) {
+      e.preventDefault();
+      const index = parseInt(document.getElementById('editIndex').value);
+      const cabecalhos = dadosPlanilha[0] || [
+        'Colaborador', 'Material', 'N° Serie', 'Local', 'Data Saida', 'Data Entrega', 'Status de entrega', 'Observação', 'N° Ordem de Serviço'
+      ];
+
+      const idxColab = getColIdx(cabecalhos, ['colaborador', 'operador', 'nome'], 0);
+      const idxMat = getColIdx(cabecalhos, ['material', 'equipamento', 'modelo', 'materal'], 1);
+      const idxSer = getColIdx(cabecalhos, ['serie', 'patrimonio', 'n° serie', 'nº serie', 'tag'], 2);
+      const idxLoc = getColIdx(cabecalhos, ['local', 'setor', 'destino'], 3);
+      const idxDtSai = getColIdx(cabecalhos, ['saida', 'data saida'], 4);
+      const idxDtEnt = getColIdx(cabecalhos, ['entrega', 'devolucao', 'data entrega'], 5);
+      const idxStat = getColIdx(cabecalhos, ['status', 'situacao'], 6);
+      const idxObs = getColIdx(cabecalhos, ['observacao', 'obs'], 7);
+      const idxOs = getColIdx(cabecalhos, ['ordem', 'servico', 'os'], 8);
+
+      let linhaDados = index === -1 ? new Array(cabecalhos.length).fill('') : [...dadosPlanilha[index]];
+
+      linhaDados[idxColab] = document.getElementById('inpColaborador').value;
+      linhaDados[idxMat] = document.getElementById('inpMaterial').value;
+      linhaDados[idxSer] = document.getElementById('inpNumSerie').value;
+      linhaDados[idxLoc] = document.getElementById('inpLocal').value;
+      linhaDados[idxDtSai] = formatarDataParaTabela(document.getElementById('inpDataSaida').value);
+      linhaDados[idxDtEnt] = formatarDataParaTabela(document.getElementById('inpDataEntrega').value);
+      linhaDados[idxStat] = document.getElementById('inpStatusEntrega').value;
+      linhaDados[idxObs] = document.getElementById('inpObservacao').value;
+      linhaDados[idxOs] = document.getElementById('inpOS').value;
+
+      if (index === -1) {
+        // Novo Registro (insere no topo do histórico)
+        dadosPlanilha.splice(1, 0, linhaDados);
+      } else {
+        // Edição de Registro Existente
+        dadosPlanilha[index] = linhaDados;
+      }
+
+      salvarStorage();
+      renderizarTabela(dadosPlanilha);
+      atualizarContador();
+      closeModal();
+    }
+
+    function excluirLancamento(index) {
+      if (confirm("Tem certeza que deseja excluir este registro do histórico?")) {
+        dadosPlanilha.splice(index, 1);
+        salvarStorage();
+        renderizarTabela(dadosPlanilha);
+        atualizarContador();
+      }
+    }
+
+    function atualizarContador() {
+      const statusElement = document.getElementById('statusInfo');
+      statusElement.innerText = `💾 Salvo Auto (${dadosPlanilha.length - 1} registros)`;
+    }
+
+    carregarExcel();
+  </script>
+</body>
+</html>

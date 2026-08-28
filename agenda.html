@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agenda de Eventos - Almoxarifado 2.0</title>
+  
+  <!-- Fonte Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Ícones Lucide -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  
+  <style>
+    :root {
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --secondary: #1e293b;
+      --bg-main: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #334155;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --danger-bg: #fee2e2;
+      --danger-text: #991b1b;
+      --warning: #f59e0b;
+      --warning-bg: #fef3c7;
+      --warning-text: #92400e;
+      --success: #10b981;
+      --success-bg: #dcfce7;
+      --success-text: #166534;
+      --info: #3b82f6;
+      --info-bg: #dbeafe;
+      --info-text: #1e40af;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text-main); display: flex; min-height: 100vh; }
+
+    /* Menu Lateral */
+    aside.sidebar { 
+      width: 260px; 
+      background-color: var(--secondary); 
+      color: white; 
+      display: flex; 
+      flex-direction: column; 
+      padding: 20px; 
+      flex-shrink: 0; 
+    }
+    .sidebar-brand { 
+      font-size: 1.15rem; 
+      font-weight: 700; 
+      margin-bottom: 30px; 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      color: var(--primary); 
+    }
+    .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .sidebar-menu li a { 
+      color: #94a3b8; 
+      text-decoration: none; 
+      padding: 11px 14px; 
+      border-radius: 8px; 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      font-weight: 500; 
+      font-size: 0.88rem;
+      transition: all 0.2s; 
+    }
+    .sidebar-menu li a:hover { background-color: rgba(255, 255, 255, 0.06); color: white; }
+    .sidebar-menu li a.active { background-color: #334155; color: white; font-weight: 600; }
+    .sidebar-section-title { font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin: 12px 0 4px 14px; }
+
+    /* Conteúdo Principal */
+    .main-content { flex: 1; padding: 25px 30px; overflow-y: auto; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .page-header h1 { font-size: 1.35rem; color: var(--secondary); font-weight: 800; display: flex; align-items: center; gap: 10px; }
+    .page-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 3px; }
+    .header-actions { display: flex; gap: 10px; }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover { background: var(--primary-dark); }
+
+    /* Alerta de Vencimento */
+    .urgent-banner {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-left: 4px solid var(--danger);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      color: var(--danger-text);
+      font-weight: 500;
+      display: none;
+    }
+    .urgent-banner.show { display: block; }
+
+    /* Tabela */
+    .table-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+    }
+    .table-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { 
+      background: #f8fafc; 
+      color: var(--secondary); 
+      font-weight: 700; 
+      padding: 13px 14px; 
+      font-size: 0.82rem; 
+      border-bottom: 2px solid var(--border); 
+      white-space: nowrap;
+      color: #475569;
+    }
+    td { padding: 13px 14px; border-bottom: 1px solid var(--border); font-size: 0.86rem; vertical-align: middle; color: #334155; }
+    tr:hover { background-color: #f8fafc; }
+
+    /* Status com cores */
+    .status-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      appearance: none;
+      outline: none;
+      text-align: center;
+    }
+    .status-badge.em-andamento { background: var(--warning-bg); color: #92400e; }
+    .status-badge.em-andamento:hover { background: #fde68a; }
+    .status-badge.concluido { background: var(--success-bg); color: #166534; }
+    .status-badge.concluido:hover { background: #bbf7d0; }
+    .status-badge.atrasado { background: var(--danger-bg); color: #991b1b; }
+    .status-badge.atrasado:hover { background: #fecaca; }
+
+    /* Botões de Ação */
+    .action-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    .action-btn:hover { background: #f1f5f9; color: var(--secondary); }
+    .action-btn.del:hover { background: var(--danger-bg); color: var(--danger); }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      display: none;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 14px;
+      padding: 24px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+    }
+    .modal h3 { font-size: 1.15rem; font-weight: 800; color: var(--secondary); margin-bottom: 20px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--secondary); margin-bottom: 6px; }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(16,185,129,0.1); }
+    .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+    .btn-secondary {
+      background: #f1f5f9; color: var(--text-main); border: none; padding: 9px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;
+    }
+    .btn-secondary:hover { background: #e2e8f0; }
+
+    /* Ícone de calendário na célula */
+    .date-cell {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .date-cell i { color: #94a3b8; width: 14px; height: 14px; }
+
+    /* Responsivo */
+    @media(max-width: 768px) {
+      aside.sidebar { position: fixed; left: -260px; z-index: 50; }
+      .main-content { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Menu Lateral -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <i data-lucide="box"></i>
+      <span>Almoxarifado 2.0</span>
+    </div>
+    <ul class="sidebar-menu">
+      <li><a href="index.html"><i data-lucide="layout-dashboard"></i> Dashboard Geral</a></li>
+      <div class="sidebar-section-title">Módulos de Áudio & Vídeo</div>
+      <li><a href="index183.html"><i data-lucide="layers"></i> Inventário A&V (183)</a></li>
+      <li><a href="analytics.html"><i data-lucide="bar-chart-3"></i> Sysman Analytics</a></li>
+      <div class="sidebar-section-title">Controles Operacionais</div>
+      <li><a href="agenda.html" class="active"><i data-lucide="calendar"></i> Agenda de Eventos</a></li>
+      <li><a href="manutencao.html"><i data-lucide="wrench"></i> Manutenção Externa</a></li>
+      <li><a href="material de estudo.html"><i data-lucide="clipboard-list"></i> Listas de Estudos</a></li>
+      <li><a href="TVs em circulacao.html"><i data-lucide="tv"></i> Controle de TVs</a></li>
+      <li><a href="historico operacao.html"><i data-lucide="send"></i> Lançamentos Operação</a></li>
+      <li><a href="historico notebooks.html"><i data-lucide="monitor"></i> Lançamentos Notebooks</a></li>
+    </ul>
+  </aside>
+
+  <!-- Conteúdo Principal -->
+  <main class="main-content">
+    <div class="page-header">
+      <h1><i data-lucide="clipboard-list" style="width:20px;height:20px;"></i> Demandas & Prazos</h1>
+      <div class="header-actions">
+        <button class="btn-primary" onclick="abrirModalCadastro()">
+          <i data-lucide="plus"></i> Novo Cadastro
+        </button>
+      </div>
+    </div>
+
+    <!-- Alerta de Vencimento -->
+    <div class="urgent-banner" id="urgentBanner"></div>
+
+    <!-- Tabela -->
+    <div class="table-section">
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Data Limite</th>
+              <th>Evento / Demanda</th>
+              <th>Categoria</th>
+              <th>Status</th>
+              <th style="text-align: center;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaAgendaBody">
+            <tr>
+              <td colspan="5" style="text-align:center; color:var(--text-muted); padding:30px;">Carregando...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal de Cadastro / Edição -->
+  <div class="modal-overlay" id="modalCadastro">
+    <div class="modal">
+      <h3 id="modalTitulo">Nova Demanda / Evento</h3>
+      <div class="form-group">
+        <label>Data Limite</label>
+        <input type="date" id="inpDataLimite">
+      </div>
+      <div class="form-group">
+        <label>Evento / Demanda</label>
+        <input type="text" id="inpNomeDemanda" placeholder="Ex: Separar material para evento...">
+      </div>
+      <div class="form-group">
+        <label>Categoria</label>
+        <select id="inpCategoria">
+          <option value="Evento">Evento</option>
+          <option value="Patrimônio">Patrimônio</option>
+          <option value="Montagem">Montagem</option>
+          <option value="Inventário">Inventário</option>
+          <option value="Gargalo">Gargalo</option>
+          <option value="Pedido de Estoque">Pedido de Estoque</option>
+          <option value="Empréstimo">Empréstimo</option>
+          <option value="Doação">Doação</option>
+          <option value="Compra de TV">Compra de TV</option>
+          <option value="Compra de Peças para Celulares">Compra de Peças para Celulares</option>
+          <option value="Outros">Outros</option>
+        </select>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-primary" onclick="salvarRegistro()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CHAVE_STORAGE = 'db_agenda';
+    let listaDemandas = [];
+    let indiceEdicao = null;
+
+    // Dados padrão conforme sua tabela
+    const PADRAO = [
+      { data: '2026-08-31', nome: 'Patrimoniar Caixas de Som Novas (Porto Itaguaçu - Terceira)', cat: 'Patrimônio', status: 'EM ANDAMENTO' },
+      { data: '2026-08-26', nome: 'Separar Material para Montagem de Iluminação', cat: 'Evento', status: 'CONCLUÍDO' },
+      { data: '2026-08-27', nome: 'Separar Material para Jantar no Convento', cat: 'Evento', status: 'CONCLUÍDO' },
+      { data: '2026-08-29', nome: 'Separar Material para Morro do Cruzeiro', cat: 'Evento', status: 'EM ANDAMENTO' },
+      { data: '2026-08-29', nome: 'Separar Material para Tribuna Sul - Rosário', cat: 'Evento', status: 'EM ANDAMENTO' },
+      { data: '2026-09-04', nome: 'Fim dos Testes e Verificação - Inauguração Fachada Oeste', cat: 'Gargalo', status: 'EM ANDAMENTO' },
+      { data: '2026-09-10', nome: 'Entrega de Materiais p/ Fachada Oeste (Ensaio Geral dia 12)', cat: 'Evento', status: 'EM ANDAMENTO' },
+      { data: '2026-10-01', nome: 'Início Programação Novena de Nossa Sra. (Carréata, Orquestra)', cat: 'Evento', status: 'EM ANDAMENTO' },
+      { data: '2026-09-30', nome: 'Inventário Geral do Almoxarifado + Patrimônio Acumulado', cat: 'Inventário', status: 'EM ANDAMENTO' },
+      { data: '2026-08-28', nome: 'Pegar JBL no 8º andar para usar final de semana', cat: 'Montagem', status: 'EM ANDAMENTO' }
+    ];
+
+    function normalizarStatus(texto) {
+      const s = String(texto || '').toUpperCase().trim();
+      if (s.includes('CONCL')) return 'CONCLUÍDO';
+      if (s.includes('ATRAS')) return 'ATRASADO';
+      return 'EM ANDAMENTO';
+    }
+
+    function carregarDados() {
+      const salvo = localStorage.getItem(CHAVE_STORAGE);
+      listaDemandas = salvo ? JSON.parse(salvo) : [...PADRAO];
+      listaDemandas.forEach(item => item.status = normalizarStatus(item.status));
+      salvarStorage();
+      renderizarTabela();
+      verificarVencimentos();
+    }
+
+    function salvarStorage() {
+      localStorage.setItem(CHAVE_STORAGE, JSON.stringify(listaDemandas));
+    }
+
+    function formatarDataBr(strData) {
+      if (!strData) return '';
+      const [ano, mes, dia] = strData.split('-');
+      return `${dia}/${mes}/${ano}`;
+    }
+
+    function getDiferencaDias(strData) {
+      if (!strData) return null;
+      const alvo = new Date(strData);
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      alvo.setHours(0, 0, 0, 0);
+      return Math.round((alvo - hoje) / (1000 * 60 * 60 * 24));
+    }
+
+    function verificarVencimentos() {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      let urgente = null;
+
+      listaDemandas.forEach(item => {
+        if (normalizarStatus(item.status) === 'CONCLUÍDO') return;
+        const dias = getDiferencaDias(item.data);
+        if (dias !== null) {
+          if (dias < 0) item.status = 'ATRASADO';
+          else if (dias === 0 && !urgente) urgente = item;
+        }
+      });
+
+      salvarStorage();
+      const banner = document.getElementById('urgentBanner');
+      if (urgente) {
+        banner.textContent = `⚠️ Urgente / Prazo para Hoje: "${urgente.nome}" (Vencimento: ${formatarDataBr(urgente.data)})`;
+        banner.classList.add('show');
+      } else {
+        banner.classList.remove('show');
+      }
+    }
+
+    function getClasseStatus(status) {
+      const s = normalizarStatus(status);
+      if (s === 'CONCLUÍDO') return 'concluido';
+      if (s === 'ATRASADO') return 'atrasado';
+      return 'em-andamento';
+    }
+
+    function renderizarTabela() {
+      const tbody = document.getElementById('tabelaAgendaBody');
+      if (listaDemandas.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:30px;">Nenhuma demanda cadastrada.</td></tr>`;
+        lucide.createIcons();
+        return;
+      }
+
+      // Ordena por data (mais próxima primeiro)
+      const ordenado = [...listaDemandas].sort((a, b) => new Date(a.data) - new Date(b.data));
+
+      tbody.innerHTML = ordenado.map((item, idx) => {
+        const classe = getClasseStatus(item.status);
+        const indiceReal = listaDemandas.indexOf(item);
+
+        return `
+          <tr>
+            <td>
+              <div class="date-cell">
+                <i data-lucide="calendar"></i>
+                ${formatarDataBr(item.data)}
+              </div>
+            </td>
+            <td>${item.nome}</td>
+            <td>${item.cat}</td>
+            <td>
+              <select class="status-badge ${classe}" onchange="alterarStatus(${indiceReal}, this.value)">
+                <option value="EM ANDAMENTO" ${normalizarStatus(item.status)==='EM ANDAMENTO'?'selected':''}>EM ANDAMENTO</option>
+                <option value="CONCLUÍDO" ${normalizarStatus(item.status)==='CONCLUÍDO'?'selected':''}>CONCLUÍDO</option>
+                <option value="ATRASADO" ${normalizarStatus(item.status)==='ATRASADO'?'selected':''}>ATRASADO</option>
+              </select>
+            </td>
+            <td style="text-align: center;">
+              <button class="action-btn" onclick="editarRegistro(${indiceReal})" title="Editar">
+                <i data-lucide="pencil" style="width:16px;height:16px;"></i>
+              </button>
+              <button class="action-btn del" onclick="excluirRegistro(${indiceReal})" title="Excluir">
+                <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function alterarStatus(indice, novoStatus) {
+      listaDemandas[indice].status = normalizarStatus(novoStatus);
+      salvarStorage();
+      verificarVencimentos();
+      renderizarTabela();
+    }
+
+    function abrirModalCadastro() {
+      indiceEdicao = null;
+      document.getElementById('modalTitulo').textContent = 'Nova Demanda / Evento';
+      document.getElementById('inpDataLimite').value = '';
+      document.getElementById('inpNomeDemanda').value = '';
+      document.getElementById('inpCategoria').value = 'Evento';
+      document.getElementById('modalCadastro').classList.add('active');
+    }
+
+    function editarRegistro(indice) {
+      indiceEdicao = indice;
+      const item = listaDemandas[indice];
+      document.getElementById('modalTitulo').textContent = 'Editar Demanda';
+      document.getElementById('inpDataLimite').value = item.data;
+      document.getElementById('inpNomeDemanda').value = item.nome;
+      document.getElementById('inpCategoria').value = item.cat;
+      document.getElementById('modalCadastro').classList.add('active');
+    }
+
+    function fecharModal() {
+      document.getElementById('modalCadastro').classList.remove('active');
+      indiceEdicao = null;
+    }
+
+    function salvarRegistro() {
+      const data = document.getElementById('inpDataLimite').value.trim();
+      const nome = document.getElementById('inpNomeDemanda').value.trim();
+      const cat = document.getElementById('inpCategoria').value;
+
+      if (!data || !nome) {
+        alert('Preencha a Data e o Nome da Demanda.');
+        return;
+      }
+
+      if (indiceEdicao !== null) {
+        listaDemandas[indiceEdicao].data = data;
+        listaDemandas[indiceEdicao].nome = nome;
+        listaDemandas[indiceEdicao].cat = cat;
+      } else {
+        listaDemandas.push({ data, nome, cat, status: 'EM ANDAMENTO' });
+      }
+
+      salvarStorage();
+      fecharModal();
+      verificarVencimentos();
+      renderizarTabela();
+    }
+
+    function excluirRegistro(indice) {
+      if (confirm('Tem certeza que deseja excluir esta demanda?')) {
+        listaDemandas.splice(indice, 1);
+        salvarStorage();
+        renderizarTabela();
+      }
+    }
+
+    // Inicializa
+    carregarDados();
+  </script>
+</body>
+</html>
