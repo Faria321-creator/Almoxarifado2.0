@@ -679,7 +679,7 @@
               dataObj: dtEntObj,
               diasDiff: diferencaEmDias(dtEntObj),
               status: statusTxt,
-              isDevolvido: statusTxt.toLowerCase().includes('devolvido') || statusTxt.toLowerCase().includes('concluido'),
+              isDevolvido: statusTxt.toLowerCase().includes('devolvido') || statusTxt.toLowerCase().includes('conclu'),
               os: row[iOs] || ''
             });
           }
@@ -734,7 +734,7 @@
               dataObj: dtEntObj,
               diasDiff: diferencaEmDias(dtEntObj),
               status: statusTxt,
-              isDevolvido: statusTxt.toLowerCase().includes('devolvido') || statusTxt.toLowerCase().includes('concluido'),
+              isDevolvido: statusTxt.toLowerCase().includes('devolvido') || statusTxt.toLowerCase().includes('conclu'),
               os: row[iOs] || ''
             });
           }
@@ -827,11 +827,16 @@
         { data: '2026-09-04', nome: 'Fim dos Testes e Verificação - Inauguração Fachada Oeste', cat: 'Gargalo', status: 'Em Andamento', local: 'Fachada Oeste' }
       ];
 
-      const demandasAtivas = demandasAgenda.filter(d => d.status !== 'Concluído');
+      const demandasAtivas = demandasAgenda.filter(d => {
+        const s = String(d.status || '').toLowerCase();
+        return !s.includes('concl');
+      });
       document.getElementById('cardAgendaMetric').innerText = `${demandasAtivas.length} Ativas`;
 
       demandasAgenda.forEach(d => {
         const dtObj = converterParaDataObj(d.data);
+        const sLower = String(d.status || '').toLowerCase();
+        const isConcluido = sLower.includes('concl');
         todosRegistros.push({
           modulo: 'Agenda',
           moduloClass: 'agenda',
@@ -845,7 +850,7 @@
           dataObj: dtObj,
           diasDiff: diferencaEmDias(dtObj),
           status: d.status,
-          isDevolvido: d.status === 'Concluído',
+          isDevolvido: isConcluido,
           os: '-'
         });
       });
