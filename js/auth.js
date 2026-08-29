@@ -1,5 +1,5 @@
 // ==========================================
-// CONTROLE GLOBAL DE AUTENTICAÇÃO E PERMISSÕES
+// CONTROLE GLOBAL DE AUTENTICAÇÃO, PERMISSÕES E RESPONSIVIDADE
 // Almoxarifado 2.0 - Santuário Nacional
 // ==========================================
 
@@ -22,8 +22,22 @@
     return;
   }
 
-  // 2. Aplicação de permissões ao carregar o DOM
+  // 2. Aplicação de permissões e controle responsivo no DOM
   document.addEventListener('DOMContentLoaded', () => {
+    // Injeta CSS responsivo se não existir
+    if (!document.getElementById('responsiveCssLink')) {
+      const cssLink = document.createElement('link');
+      cssLink.id = 'responsiveCssLink';
+      cssLink.rel = 'stylesheet';
+      cssLink.href = 'css/responsive.css';
+      document.head.appendChild(cssLink);
+    }
+
+    // Configura Topbar e Menu Lateral no Celular
+    if (!isLoginPage) {
+      configurarMenuMobile();
+    }
+
     // Atualiza nome do usuário logado na barra lateral
     const elNome = document.getElementById('responsavelNome');
     if (elNome) {
@@ -37,6 +51,56 @@
     }
   });
 })();
+
+function configurarMenuMobile() {
+  const sidebar = document.querySelector('aside.sidebar');
+  if (!sidebar) return;
+
+  // Cria Barra de Topo do Celular
+  if (!document.getElementById('mobileTopbar')) {
+    const topbar = document.createElement('div');
+    topbar.id = 'mobileTopbar';
+    topbar.className = 'mobile-topbar';
+    topbar.innerHTML = `
+      <div class="mobile-brand">
+        <i data-lucide="box" style="width: 20px; height: 20px;"></i>
+        <span>Almoxarifado 2.0</span>
+      </div>
+      <button class="mobile-menu-btn" id="btnToggleMobileMenu">
+        <i data-lucide="menu" style="width: 18px; height: 18px;"></i> Menu
+      </button>
+    `;
+    document.body.insertBefore(topbar, document.body.firstChild);
+
+    // Cria Overlay de Fundo
+    const overlay = document.createElement('div');
+    overlay.id = 'sidebarOverlay';
+    overlay.className = 'sidebar-overlay';
+    document.body.appendChild(overlay);
+
+    // Eventos do Menu Celular
+    const btnToggle = document.getElementById('btnToggleMobileMenu');
+    btnToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
+    });
+
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('active');
+    });
+
+    // Fecha o menu ao clicar em qualquer item da barra lateral no celular
+    sidebar.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+      });
+    });
+
+    if (window.lucide) lucide.createIcons();
+  }
+}
 
 function aplicarModoLeitura() {
   document.body.classList.add('modo-leitura');
@@ -119,4 +183,3 @@ function fazerLogout() {
   sessionStorage.clear();
   window.location.href = 'login183.html';
 }
-
