@@ -16,6 +16,8 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- Biblioteca Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Controle de Sessão e Permissões -->
+  <script src="js/auth.js"></script>
 
   <style>
     :root {
@@ -353,6 +355,13 @@
       <li><a href="historico operacao.html"><i data-lucide="send"></i> Lançamentos Operação</a></li>
       <li><a href="historico notebooks.html"><i data-lucide="monitor"></i> Lançamentos Notebooks</a></li>
     </ul>
+
+    <div style="margin-top: auto; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; padding-left: 10px; padding-right: 10px;">
+      <span id="responsavelNome" style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">Administrador</span>
+      <button id="btnSair" onclick="fazerLogout()" title="Sair" style="background: none; border: none; color: #f87171; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 700;">
+        <i data-lucide="log-out" style="width: 14px; height: 14px;"></i> Sair
+      </button>
+    </div>
   </aside>
 
   <!-- Conteúdo Principal -->

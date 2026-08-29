@@ -18,6 +18,8 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Controle de Sessão e Permissões -->
+  <script src="js/auth.js"></script>
 
   <style>
     :root {
@@ -211,11 +213,11 @@
       <li><a href="historico notebooks.html"><i data-lucide="monitor"></i> Lançamentos Notebooks</a></li>
     </ul>
 
-    <div style="margin-top: auto; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;">
-      <span style="font-size: 0.75rem; color: #94a3b8;">Santuário Nacional</span>
-      <a href="login183.html" title="Login / Trocar Usuário" style="color: #94a3b8; text-decoration: none; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;">
-        <i data-lucide="user" style="width: 14px; height: 14px;"></i> Acesso
-      </a>
+    <div style="margin-top: auto; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; padding-left: 10px; padding-right: 10px;">
+      <span id="responsavelNome" style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">Administrador</span>
+      <button id="btnSair" onclick="fazerLogout()" title="Sair" style="background: none; border: none; color: #f87171; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 700;">
+        <i data-lucide="log-out" style="width: 14px; height: 14px;"></i> Sair
+      </button>
     </div>
   </aside>
 
