@@ -256,6 +256,21 @@
     let manutencao = JSON.parse(localStorage.getItem('manutencao_db')) || itensIniciais;
     let pastaAtual = null;
 
+    function carregarDados() {
+      const salvo = localStorage.getItem('manutencao_db');
+      if (salvo) {
+        try {
+          manutencao = JSON.parse(salvo);
+        } catch (e) {}
+      }
+      if (pastaAtual) {
+        renderTabela();
+      } else {
+        renderPastas();
+      }
+    }
+    window.carregarDados = carregarDados;
+
     function formatMoeda(val) {
       return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }

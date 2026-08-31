@@ -7,8 +7,8 @@
   const path = window.location.pathname.split('/').pop().toLowerCase();
   const isLoginPage = path === 'login183.html' || path === 'login.html';
 
-  const perfil = sessionStorage.getItem('usuario_perfil');
-  const podeEditar = sessionStorage.getItem('usuario_pode_editar');
+  const perfil = sessionStorage.getItem('usuario_perfil') || localStorage.getItem('usuario_perfil');
+  const podeEditar = sessionStorage.getItem('usuario_pode_editar') || localStorage.getItem('usuario_pode_editar');
 
   // 1. Redirecionamento se não estiver autenticado
   if (!perfil && !isLoginPage) {
@@ -181,5 +181,8 @@ function aplicarModoLeitura() {
 // Logout Geral
 function fazerLogout() {
   sessionStorage.clear();
+  localStorage.removeItem('usuario_perfil');
+  localStorage.removeItem('usuario_nome');
+  localStorage.removeItem('usuario_pode_editar');
   window.location.href = 'login183.html';
 }

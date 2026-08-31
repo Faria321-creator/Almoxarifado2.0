@@ -348,14 +348,23 @@
       return 'EM ANDAMENTO';
     }
 
-    function carregarDados() {
+    function carregarDados(deveSalvar = false) {
       const salvo = localStorage.getItem(CHAVE_STORAGE);
-      listaDemandas = salvo ? JSON.parse(salvo) : [...PADRAO];
+      if (salvo) {
+        try {
+          listaDemandas = JSON.parse(salvo);
+        } catch (e) {
+          listaDemandas = [...PADRAO];
+        }
+      } else {
+        listaDemandas = [...PADRAO];
+      }
       listaDemandas.forEach(item => item.status = normalizarStatus(item.status));
-      salvarStorage();
+      if (deveSalvar) salvarStorage();
       renderizarTabela();
       verificarVencimentos();
     }
+    window.carregarDados = carregarDados;
 
     function salvarStorage() {
       localStorage.setItem(CHAVE_STORAGE, JSON.stringify(listaDemandas));

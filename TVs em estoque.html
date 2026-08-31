@@ -16,7 +16,7 @@
   <!-- Controle de Sessão e Permissões -->
   <script src="js/auth.js"></script>
   <!-- Sincronização em Nuvem Supabase -->
-  <script src="js/cloud_sync.js"></script>
+  <script src="js/supabase_sync.js"></script>
 
   <style>
     :root {
@@ -636,6 +636,7 @@
       statusElement.innerText = `💾 Salvo (${total} registros)`;
     }
 
+    window.carregarExcel = carregarExcel;
     carregarExcel();
   </script>
 </body>

@@ -12,7 +12,7 @@
   <!-- Controle de Sessão e Permissões -->
   <script src="js/auth.js"></script>
   <!-- Sincronização em Nuvem Supabase -->
-  <script src="js/cloud_sync.js"></script>
+  <script src="js/supabase_sync.js"></script>
 
   <style>
     :root {
@@ -282,6 +282,21 @@
     };
 
     let listas = JSON.parse(localStorage.getItem(STORAGE_KEY)) || listasIniciais;
+
+    function carregarDados() {
+      const salvo = localStorage.getItem(STORAGE_KEY);
+      if (salvo) {
+        try {
+          listas = JSON.parse(salvo);
+        } catch (e) {}
+      }
+      if (currentFolderKey && listas[currentFolderKey]) {
+        renderTable(currentFolderKey);
+      } else {
+        renderFolders();
+      }
+    }
+    window.carregarDados = carregarDados;
 
     function salvarStorage() {
       try {

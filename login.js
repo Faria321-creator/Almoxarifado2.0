@@ -54,9 +54,13 @@ async function fazerLoginAdmin() {
         (usuarioLower === 'manutencao' && (senha === '123' || senha === 'Jo980520@'));
 
     if (isAdmValido) {
+        const nome = usuarioLower === 'joaofura1@gmail.com' ? 'João Vitor (ADM)' : 'Administrador';
         sessionStorage.setItem('usuario_perfil', 'admin');
-        sessionStorage.setItem('usuario_nome', usuarioLower === 'joaofura1@gmail.com' ? 'João Vitor (ADM)' : 'Administrador');
+        sessionStorage.setItem('usuario_nome', nome);
         sessionStorage.setItem('usuario_pode_editar', 'true');
+        localStorage.setItem('usuario_perfil', 'admin');
+        localStorage.setItem('usuario_nome', nome);
+        localStorage.setItem('usuario_pode_editar', 'true');
         
         window.location.href = 'index.html';
         return;
@@ -80,6 +84,9 @@ async function fazerLoginAdmin() {
                 sessionStorage.setItem('usuario_perfil', 'admin');
                 sessionStorage.setItem('usuario_nome', data.user.email);
                 sessionStorage.setItem('usuario_pode_editar', 'true');
+                localStorage.setItem('usuario_perfil', 'admin');
+                localStorage.setItem('usuario_nome', data.user.email);
+                localStorage.setItem('usuario_pode_editar', 'true');
                 window.location.href = 'index.html';
                 return;
             }
@@ -115,9 +122,13 @@ function fazerLoginVisualizador() {
         return;
     }
 
+    const nomeVis = usuario.toLowerCase() === 'visitante' ? 'Visitante (Leitura)' : `${usuario} (Leitura)`;
     sessionStorage.setItem('usuario_perfil', 'visualizacao');
-    sessionStorage.setItem('usuario_nome', usuario.toLowerCase() === 'visitante' ? 'Visitante (Leitura)' : `${usuario} (Leitura)`);
+    sessionStorage.setItem('usuario_nome', nomeVis);
     sessionStorage.setItem('usuario_pode_editar', 'false');
+    localStorage.setItem('usuario_perfil', 'visualizacao');
+    localStorage.setItem('usuario_nome', nomeVis);
+    localStorage.setItem('usuario_pode_editar', 'false');
     
     window.location.href = 'index.html';
 }
@@ -125,5 +136,8 @@ function fazerLoginVisualizador() {
 // Logout geral
 function fazerLogout() {
     sessionStorage.clear();
+    localStorage.removeItem('usuario_perfil');
+    localStorage.removeItem('usuario_nome');
+    localStorage.removeItem('usuario_pode_editar');
     window.location.href = 'login183.html';
 }

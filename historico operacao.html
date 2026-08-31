@@ -16,7 +16,7 @@
   <!-- Controle de Sessão e Permissões -->
   <script src="js/auth.js"></script>
   <!-- Sincronização em Nuvem Supabase -->
-  <script src="js/cloud_sync.js"></script>
+  <script src="js/supabase_sync.js"></script>
 
   <style>
     :root {
@@ -272,15 +272,21 @@
       const salvo = localStorage.getItem(STORAGE_KEY);
       if (salvo) {
         try {
-          dadosPlanilha = JSON.parse(salvo);
-          if (dadosPlanilha && dadosPlanilha.length > 0) {
+          const parsed = JSON.parse(salvo);
+          if (Array.isArray(parsed) && parsed.length >= 2 && Array.isArray(parsed[0]) && 
+              (String(parsed[0][0]).toLowerCase().includes('operador') || String(parsed[0][0]).toLowerCase().includes('colaborador'))) {
+            dadosPlanilha = parsed;
             renderizarTabela(dadosPlanilha);
             statusElement.className = "info-badge success";
             statusElement.innerText = `💾 Auto-Save (${dadosPlanilha.length - 1} registros)`;
             return;
+          } else {
+            console.warn("Cache local de operação corrompido ou incompleto. Recarregando planilha original...");
+            localStorage.removeItem(STORAGE_KEY);
           }
         } catch (err) {
           console.warn("Falha ao ler cache local, carregando planilha...", err);
+          localStorage.removeItem(STORAGE_KEY);
         }
       }
       
@@ -499,6 +505,7 @@
       statusElement.innerText = `💾 Salvo Auto (${dadosPlanilha.length - 1} registros)`;
     }
 
+    window.carregarExcel = carregarExcel;
     carregarExcel();
   </script>
 </body>
