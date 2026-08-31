@@ -579,6 +579,51 @@
         registrarLocalNoMapa('10321007', 'Basílica - Galerias - Galeria Sul - Almoxarifado Multimídia', 'Proj.514');
         registrarLocalNoMapa('183', 'Basílica - Galerias - Galeria Sul - Almoxarifado Multimídia', 'Proj.514');
 
+        // Novos Locais do CSA - TV / Rádio / Pavimentos
+        const NOVOS_LOCAIS_CSA = [
+          { cod: '21.02.03', nome: 'CSA - Térreo - Recepção TV', proj: 'Proj. 1610' },
+          { cod: '21.02.03.001', nome: 'CSA - Térreo - Recepção TV - Escada', proj: 'Proj. 1610' },
+          { cod: '21.02.03.002', nome: 'CSA - Térreo - Recepção TV - Hall do Elevador', proj: 'Proj. 1610' },
+          { cod: '21.02.03.003', nome: 'CSA - Térreo - Recepção TV - Sanitário PNE', proj: 'Proj. 1610' },
+          { cod: '21.02.03.004', nome: 'CSA - Térreo - Recepção TV - DML', proj: 'Proj. 1610' },
+          { cod: '21.05.07', nome: 'CSA - 2º Pavimento - TV', proj: 'Proj. 1846' },
+          { cod: '21.05.07.001', nome: 'CSA - 2º Pavimento - TV - Direção', proj: 'Proj. 1846' },
+          { cod: '21.05.07.002', nome: 'CSA - 2º Pavimento - TV - Jornalismo', proj: 'Proj. 1846' },
+          { cod: '21.05.07.003', nome: 'CSA - 2º Pavimento - TV - Produção', proj: 'Proj. 1846' },
+          { cod: '21.05.07.004', nome: 'CSA - 2º Pavimento - TV - Sala ao lado da Produção', proj: 'Proj. 1846' },
+          { cod: '21.05.07.005', nome: 'CSA - 2º Pavimento - TV - Sala de Reuniões 1', proj: 'Proj. 1846' },
+          { cod: '21.05.07.006', nome: 'CSA - 2º Pavimento - TV - Copa', proj: 'Proj. 1610' },
+          { cod: '21.05.07.007', nome: 'CSA - 2º Pavimento - TV - Sanitário ao lado da Copa', proj: 'Proj. 1610' },
+          { cod: '21.05.07.008', nome: 'CSA - 2º Pavimento - TV - Sala de Reuniões 2', proj: 'Proj. 1846' },
+          { cod: '21.05.07.009', nome: 'CSA - 2º Pavimento - TV - Sala de Reuniões 3', proj: 'Proj. 1846' },
+          { cod: '21.05.07.010', nome: 'CSA - 2º Pavimento - TV - Depósito Tecnico', proj: 'Proj. 1846' },
+          { cod: '21.05.07.011', nome: 'CSA - 2º Pavimento - TV - Depósito Cenografia', proj: 'Proj. 1846' },
+          { cod: '21.05.07.012', nome: 'CSA - 2º Pavimento - TV - Sala ao lado do Depósito Cenografia', proj: 'Proj. 1846' },
+          { cod: '21.05.07.013', nome: 'CSA - 2º Pavimento - TV - Edição 1', proj: 'Proj. 1846' },
+          { cod: '21.05.07.014', nome: 'CSA - 2º Pavimento - TV - Edição 2', proj: 'Proj. 1846' },
+          { cod: '21.05.07.015', nome: 'CSA - 2º Pavimento - TV - Cabine', proj: 'Proj. 1846' },
+          { cod: '21.05.07.016', nome: 'CSA - 2º Pavimento - TV - Manutenção Técnica e TI', proj: 'Proj. 1846' },
+          { cod: '21.05.07.017', nome: 'CSA - 2º Pavimento - TV - Técnica Rádio', proj: 'Proj. 1846' },
+          { cod: '21.05.07.018', nome: 'CSA - 2º Pavimento - TV - Estúdio Rádio', proj: 'Proj. 1846' },
+          { cod: '21.05.07.019', nome: 'CSA - 2º Pavimento - TV - Área Técnica', proj: 'Proj. 1846' },
+          { cod: '21.05.07.020', nome: 'CSA - 2º Pavimento - TV - Switer', proj: 'Proj. 1846' },
+          { cod: '21.05.07.021', nome: 'CSA - 2º Pavimento - TV - Áudio', proj: 'Proj. 1846' },
+          { cod: '21.05.07.022', nome: 'CSA - 2º Pavimento - TV - Sala de Equipamentos', proj: 'Proj. 1846' },
+          { cod: '21.05.07.023', nome: 'CSA - 2º Pavimento - TV - Camarim 1', proj: 'Proj. 1846' },
+          { cod: '21.05.07.023.001', nome: 'CSA - 2º Pavimento - TV - Camarim 1 - Vestiário', proj: 'Proj. 1846' },
+          { cod: '21.05.07.023.001.001', nome: 'CSA - 2º Pavimento - TV - Camarim 1 - Vestiário - Sanitário', proj: 'Proj. 1610' },
+          { cod: '21.05.07.024', nome: 'CSA - 2º Pavimento - TV - Camarim 2', proj: 'Proj. 1846' },
+          { cod: '21.05.07.024.001', nome: 'CSA - 2º Pavimento - TV - Camarim 2 - Vestiário', proj: 'Proj. 1846' },
+          { cod: '21.05.07.024.001.001', nome: 'CSA - 2º Pavimento - TV - Camarim 2 - Vestiário - Sanitário', proj: 'Proj. 1610' },
+          { cod: '21.05.07.025', nome: 'CSA - 2º Pavimento - TV - Sanitário 1 PNE Estúdio', proj: 'Proj. 1610' },
+          { cod: '21.05.07.026', nome: 'CSA - 2º Pavimento - TV - Sanitário 2 PNE Estúdio', proj: 'Proj. 1610' },
+          { cod: '21.05.07.027', nome: 'CSA - 2º Pavimento - TV - Estúdio 1', proj: 'Proj. 1846' },
+          { cod: '21.05.07.028', nome: 'CSA - 2º Pavimento - TV - Estúdio 2', proj: 'Proj. 1846' },
+          { cod: '21.05.07.029', nome: 'CSA - 2º Pavimento - TV - Técnica Estúdio', proj: 'Proj. 1846' },
+          { cod: '21.05.07.030', nome: 'CSA - 2º Pavimento - TV - Hall do Elevador Estúdio', proj: 'Proj. 1610' }
+        ];
+        NOVOS_LOCAIS_CSA.forEach(l => registrarLocalNoMapa(l.cod, l.nome, l.proj));
+
         // 3. Busca Itens do INVENTÁRIO (Aba Inventário Áudio & Vídeo)
         let itensInventario = [];
         try {

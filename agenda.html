@@ -424,8 +424,8 @@
         return;
       }
 
-      // Ordena por data (mais próxima primeiro)
-      const ordenado = [...listaDemandas].sort((a, b) => new Date(a.data) - new Date(b.data));
+      // Ordena por data (mais recente / hoje no topo, datas anteriores para baixo)
+      const ordenado = [...listaDemandas].sort((a, b) => new Date(b.data) - new Date(a.data));
 
       tbody.innerHTML = ordenado.map((item, idx) => {
         const classe = getClasseStatus(item.status);
@@ -509,7 +509,7 @@
         listaDemandas[indiceEdicao].nome = nome;
         listaDemandas[indiceEdicao].cat = cat;
       } else {
-        listaDemandas.push({ data, nome, cat, status: 'EM ANDAMENTO' });
+        listaDemandas.unshift({ data, nome, cat, status: 'EM ANDAMENTO' });
       }
 
       salvarStorage();
