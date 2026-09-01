@@ -426,15 +426,27 @@
     let chart = null;
 
     // Reconhecimento do Almoxarifado (Sala 183 / 01.03.21.007)
-    const CODIGOS_ALMOXARIFADO = ['183', '01.03.21.007', '0103.21.007', '10321007', '01.03.21.7'];
+    // CÓDIGO OFICIAL NO SUPABASE (locais table): 10321007
+    const CODIGOS_ALMOXARIFADO = ['183', '01.03.21.007', '0103.21.007', '10321007', '010321007', '01.03.21.7'];
+    const CODIGO_ALMOX_SUPABASE = '10321007'; // Código exato na tabela "locais" do Supabase
 
     function isLocalAlmoxarifado(codigoLocal) {
       if (!codigoLocal) return false;
       const cod = String(codigoLocal).trim();
-      return CODIGOS_ALMOXARIFADO.some(c => 
-        cod === c || cod.replace(/[.\s]/g, '') === c.replace(/[.\s]/g, '') ||
-        cod.replace(/^0+/, '') === c.replace(/^0+/, '')
-      );
+      const codNorm = cod.replace(/[.\s]/g, '').replace(/^0+/, '');
+      return CODIGOS_ALMOXARIFADO.some(c => {
+        const cNorm = c.replace(/[.\s]/g, '').replace(/^0+/, '');
+        return cod === c || codNorm === cNorm;
+      });
+    }
+
+    // Converte qualquer variação do código do almoxarifado para o código oficial do Supabase
+    function normalizarParaSupabase(codigoLocal) {
+      if (!codigoLocal) return codigoLocal;
+      if (isLocalAlmoxarifado(codigoLocal)) return CODIGO_ALMOX_SUPABASE;
+      // Para outros locais: remove pontos e zeros à esquerda para corresponder ao formato do Supabase
+      const semPontos = String(codigoLocal).trim().replace(/[.\s]/g, '');
+      return semPontos.replace(/^0+/, '') || semPontos;
     }
 
     function exibirStatus(mensagem, tipo) {
@@ -478,16 +490,16 @@
     // Busca dados de um local com fallbacks inteligentes
     function obterInfoLocal(codigo) {
       if (!codigo) {
-        return { codigo: '01.03.21.007', nome: 'Basílica - Galerias - Galeria Sul - Almoxarifado Multimídia (183)', projeto: 'Proj.514' };
+        return { codigo: '10321007', nome: 'Basílica - Galerias - Galeria Sul - Almoxarifado Multimídia (183)', projeto: 'Proj.514' };
       }
 
       const codStr = String(codigo).trim();
 
-      // Caso especial: Código '183' é a Sala do Almoxarifado A&V
-      if (codStr === '183' || codStr === '01.03.21.007' || codStr === '010321007' || codStr === '10321007') {
-        const almox = mapaLocais['010321007'] || mapaLocais['10321007'] || mapaLocais['01.03.21.007'];
+      // Caso especial: Qualquer variação do Almoxarifado (183, 01.03.21.007, 010321007, 10321007)
+      if (isLocalAlmoxarifado(codStr)) {
+        const almox = mapaLocais['10321007'] || mapaLocais['010321007'] || mapaLocais['01.03.21.007'];
         return {
-          codigo: '01.03.21.007',
+          codigo: '10321007',
           nome: almox ? almox.nome : 'Basílica - Galerias - Galeria Sul - Almoxarifado Multimídia',
           projeto: almox ? almox.projeto : 'Proj.514'
         };
@@ -939,8 +951,8 @@
 
       const itemAtual = dadosCruzadosCompletos.find(i => String(i.id) === String(idItem));
       const novoLocalInput = document.getElementById('analytics-edit-local').value.trim();
-      const infoLocal = obterInfoLocal(novoLocalInput);
-      const localNormalizado = (infoLocal && infoLocal.codigo) ? infoLocal.codigo : novoLocalInput;
+      // Normaliza para o formato exato que está na tabela "locais" do Supabase (sem pontos, sem zeros à esquerda)
+      const localParaSupabase = normalizarParaSupabase(novoLocalInput);
 
       const dadosAtualizados = {
         categoria: document.getElementById('analytics-edit-categoria').value.trim(),
@@ -948,7 +960,7 @@
         marca: document.getElementById('analytics-edit-marca').value.trim(),
         modelo: document.getElementById('analytics-edit-modelo').value.trim(),
         sn: document.getElementById('analytics-edit-sn').value.trim() || 'S/N',
-        local: localNormalizado,
+        local: novoLocalInput,
         observacoes: document.getElementById('analytics-edit-observacoes').value.trim()
       };
 
@@ -959,7 +971,7 @@
           const numId = idItem.replace('inv_', '');
           const { error } = await _supabase
             .from('inventario')
-            .update(dadosAtualizados)
+            .update({ ...dadosAtualizados, local: localParaSupabase })
             .eq('id', numId);
 
           if (error) throw error;
@@ -972,8 +984,8 @@
               fabricante: dadosAtualizados.marca,
               modelo: dadosAtualizados.modelo,
               num_serie: dadosAtualizados.sn,
-              codigo_local: localNormalizado,
-              status: isLocalAlmoxarifado(localNormalizado) ? 'Em Almoxarifado' : 'Transferido'
+              codigo_local: localParaSupabase,
+              status: isLocalAlmoxarifado(localParaSupabase) ? 'Em Almoxarifado' : 'Transferido'
             })
             .eq('patrimonio', itemAtual ? itemAtual.patrimonio : dadosAtualizados.codigo);
 
