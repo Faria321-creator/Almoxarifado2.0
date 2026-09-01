@@ -938,7 +938,9 @@
       const origem = document.getElementById('analytics-edit-origem').value;
 
       const itemAtual = dadosCruzadosCompletos.find(i => String(i.id) === String(idItem));
-      const novoLocal = document.getElementById('analytics-edit-local').value.trim();
+      const novoLocalInput = document.getElementById('analytics-edit-local').value.trim();
+      const infoLocal = obterInfoLocal(novoLocalInput);
+      const localNormalizado = (infoLocal && infoLocal.codigo) ? infoLocal.codigo : novoLocalInput;
 
       const dadosAtualizados = {
         categoria: document.getElementById('analytics-edit-categoria').value.trim(),
@@ -946,7 +948,7 @@
         marca: document.getElementById('analytics-edit-marca').value.trim(),
         modelo: document.getElementById('analytics-edit-modelo').value.trim(),
         sn: document.getElementById('analytics-edit-sn').value.trim() || 'S/N',
-        local: novoLocal,
+        local: localNormalizado,
         observacoes: document.getElementById('analytics-edit-observacoes').value.trim()
       };
 
@@ -970,8 +972,8 @@
               fabricante: dadosAtualizados.marca,
               modelo: dadosAtualizados.modelo,
               num_serie: dadosAtualizados.sn,
-              codigo_local: dadosAtualizados.local,
-              status: isLocalAlmoxarifado(dadosAtualizados.local) ? 'Em Almoxarifado' : 'Transferido'
+              codigo_local: localNormalizado,
+              status: isLocalAlmoxarifado(localNormalizado) ? 'Em Almoxarifado' : 'Transferido'
             })
             .eq('patrimonio', itemAtual ? itemAtual.patrimonio : dadosAtualizados.codigo);
 
