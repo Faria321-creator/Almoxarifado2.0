@@ -288,8 +288,12 @@
         <label for="filtroStatus"><i data-lucide="check-circle-2" style="width: 14px; height: 14px;"></i> Status:</label>
         <select id="filtroStatus" onchange="aplicarFiltros()">
           <option value="">Todos os Status</option>
-          <option value="Em Almoxarifado">🟢 Em Almoxarifado</option>
-          <option value="Transferido">🟡 Transferidos</option>
+          <option value="Em Almoxarifado">🟢 Em Almoxarifado (Disponível)</option>
+          <option value="Em Operação">🔵 Em Operação / Instalado</option>
+          <option value="Transferido">🟡 Transferidos / Em Trânsito</option>
+          <option value="Em Manutenção">🟠 Em Manutenção</option>
+          <option value="Reserva Técnica">🟣 Reserva Técnica</option>
+          <option value="Baixado">🔴 Baixados</option>
         </select>
       </div>
 
@@ -373,13 +377,45 @@
         
         <div class="form-grid-2">
           <div class="form-group">
-            <label for="analytics-edit-categoria">Classe / Categoria</label>
-            <input type="text" id="analytics-edit-categoria" required>
+            <label for="analytics-edit-codigo">Patrimônio</label>
+            <input type="text" id="analytics-edit-codigo" placeholder="Ex: CNA-0003, MIC, TLV..." required>
           </div>
 
           <div class="form-group">
-            <label for="analytics-edit-codigo">Nº Patrimônio / Código</label>
-            <input type="text" id="analytics-edit-codigo" required>
+            <label for="analytics-edit-categoria">Classe</label>
+            <select id="analytics-edit-categoria" required>
+              <option value="" disabled selected hidden>Selecione a Classe...</option>
+              <option value="Microfone">Microfone</option>
+              <option value="Consoles">Consoles</option>
+              <option value="Processadores">Processadores</option>
+              <option value="Amplificadores">Amplificadores</option>
+              <option value="Line Array">Line Array</option>
+              <option value="Caixa Acustica">Caixa Acustica</option>
+              <option value="Subwoofer">Subwoofer</option>
+              <option value="Notebooks/Tablet">Notebooks/Tablet</option>
+              <option value="Acessorios Multimidia">Acessorios Multimidia</option>
+              <option value="Pedestais">Pedestais</option>
+              <option value="Telas de Projeção">Telas de Projeção</option>
+              <option value="Televisores">Televisores</option>
+              <option value="Receptor de Áudio RF">Receptor de Áudio RF</option>
+              <option value="Transmissores de Áudio RF">Transmissores de Áudio RF</option>
+              <option value="Antenas">Antenas</option>
+              <option value="Distribuidor de Sinal antena RF">Distribuidor de Sinal antena RF</option>
+              <option value="Conversor de Sinal de RF/Luz">Conversor de Sinal de RF/Luz</option>
+              <option value="Projetores">Projetores</option>
+              <option value="Iluminação Cênica">Iluminação Cênica</option>
+              <option value="Rede de Dados">Rede de Dados</option>
+              <option value="Distribuidores de Energia">Distribuidores de Energia</option>
+              <option value="Intrumentos Musicais">Intrumentos Musicais</option>
+              <option value="Equipamentos de Video CFTV">Equipamentos de Video CFTV</option>
+              <option value="Conversores de Energia">Conversores de Energia</option>
+              <option value="Conversor AD/DA Áudio">Conversor AD/DA Áudio</option>
+              <option value="Distribuidores de Áudio">Distribuidores de Áudio</option>
+              <option value="Distribuidores de Midia">Distribuidores de Midia</option>
+              <option value="Racks de Transporte">Racks de Transporte</option>
+              <option value="Fones de Ouvido">Fones de Ouvido</option>
+              <option value="Outros">Outros</option>
+            </select>
           </div>
 
           <div class="form-group">
@@ -394,17 +430,29 @@
 
           <div class="form-group">
             <label for="analytics-edit-sn">Nº Série (SN)</label>
-            <input type="text" id="analytics-edit-sn">
+            <input type="text" id="analytics-edit-sn" placeholder="Ex: 01000AP0606ABY ou S/N">
           </div>
 
           <div class="form-group">
             <label for="analytics-edit-local">Cód. Local / Destino</label>
-            <input type="text" id="analytics-edit-local" placeholder="Ex: 01.03.21.007 ou código destino" required>
+            <input type="text" id="analytics-edit-local" placeholder="Ex: 10321007 ou 01.03.21.007" required>
           </div>
 
-          <div class="form-group full-width">
+          <div class="form-group">
+            <label for="analytics-edit-status">Status do Equipamento</label>
+            <select id="analytics-edit-status">
+              <option value="Em Almoxarifado">🟢 Em Almoxarifado (Disponível)</option>
+              <option value="Em Operação">🔵 Em Operação / Instalado</option>
+              <option value="Transferido">🟡 Transferido / Em Trânsito</option>
+              <option value="Em Manutenção">🟠 Em Manutenção / Reparo</option>
+              <option value="Reserva Técnica">🟣 Reserva Técnica</option>
+              <option value="Baixado">🔴 Baixado / Inoperante</option>
+            </select>
+          </div>
+
+          <div class="form-group">
             <label for="analytics-edit-observacoes">Observações / Detalhes</label>
-            <input type="text" id="analytics-edit-observacoes">
+            <input type="text" id="analytics-edit-observacoes" placeholder="Ex: Informações adicionais...">
           </div>
         </div>
 
@@ -688,14 +736,14 @@
           listaUnificada.push({
             id: `inv_${inv.id}`,
             patrimonio: codPatrimonio,
-            classe: inv.categoria || 'Áudio & Vídeo',
+            classe: inv.categoria || 'Outros',
             fabricante: inv.marca || '-',
             modelo: inv.modelo || '-',
             num_serie: inv.sn || 'S/N',
             codigo_local: infoLoc.codigo || codLocal,
             setor_local: `${infoLoc.codigo || codLocal} - ${infoLoc.nome}`,
             projeto: infoLoc.projeto || 'Geral / Santuário',
-            status: estaNoAlmox ? 'Em Almoxarifado' : 'Transferido',
+            status: estaNoAlmox ? 'Em Almoxarifado' : 'Em Operação',
             origem: 'Inventário A&V',
             foto: inv.foto || null,
             observacoes: inv.observacoes || ''
@@ -703,34 +751,45 @@
         });
 
         // B) Inclui itens adicionais da tabela Equipamentos caso existam registros não mapeados no inventário
-        const chavesJaExistentes = new Set(
-          itensInventario.map(i => `${(i.codigo || '').trim().toUpperCase()}__${(i.sn || '').trim().toUpperCase()}`)
+        // REGRA DE OURO: O que difere se o aparelho é ou não igual é o NÚMERO DE SÉRIE (SN)!
+        const seriesInventario = new Set(
+          itensInventario
+            .map(i => (i.sn && String(i.sn).trim().toUpperCase()))
+            .filter(sn => sn && sn !== 'S/N' && sn !== 'SN' && sn !== '-')
         );
 
-        itensEquipamentos.forEach(eq => {
+        itensEquipamentos.forEach((eq, index) => {
           const pat = (eq.patrimonio && String(eq.patrimonio).trim()) || '';
           const sn = (eq.num_serie && String(eq.num_serie).trim()) || '';
-          const chave = `${pat.toUpperCase()}__${sn.toUpperCase()}`;
+          const snUpper = sn.toUpperCase();
 
-          if (pat && !chavesJaExistentes.has(chave)) {
+          // Se tiver número de série válido já cadastrado no inventário, é o mesmo equipamento físico
+          const jaMapeadoNoInventario = sn && snUpper !== 'S/N' && snUpper !== 'SN' && snUpper !== '-' && seriesInventario.has(snUpper);
+
+          if (!jaMapeadoNoInventario) {
             const codLocal = eq.codigo_local ? String(eq.codigo_local).trim() : '01.03.21.007';
             const infoLoc = obterInfoLocal(codLocal);
             const estaNoAlmox = isLocalAlmoxarifado(codLocal);
 
+            // Garante um ID único para cada aparelho mesmo se houver múltiplos itens no mesmo setor
+            const idUnico = `eq_${pat || 'item'}_${sn ? sn.replace(/[^a-zA-Z0-9]/g, '_') : index}`;
+
             listaUnificada.push({
-              id: `eq_${pat}`,
-              patrimonio: pat,
-              classe: eq.classe || '-',
+              id: idUnico,
+              raw_patrimonio: pat,
+              raw_num_serie: sn,
+              patrimonio: pat || '-',
+              classe: eq.classe || 'Outros',
               fabricante: eq.fabricante || '-',
               modelo: eq.modelo || '-',
               num_serie: eq.num_serie || 'S/N',
               codigo_local: infoLoc.codigo || codLocal,
               setor_local: `${infoLoc.codigo || codLocal} - ${infoLoc.nome}`,
               projeto: infoLoc.projeto || 'Geral / Santuário',
-              status: eq.status || (estaNoAlmox ? 'Em Almoxarifado' : 'Transferido'),
+              status: eq.status || (estaNoAlmox ? 'Em Almoxarifado' : 'Em Operação'),
               origem: 'Equipamentos Santuário',
               foto: null,
-              observacoes: ''
+              observacoes: eq.referencia || ''
             });
           }
         });
@@ -739,14 +798,14 @@
 
         if (dadosCruzadosCompletos.length === 0) {
           exibirStatus("Nenhum equipamento cadastrado no Supabase", "erro");
-          document.getElementById('tblBody').innerHTML = "<tr><td colspan='9' style='padding:25px; text-align:center; color: var(--text-muted);'>Nenhum registro encontrado no inventário ou na tabela de equipamentos.</td></tr>";
+          document.getElementById('tblBody').innerHTML = "<tr><td colspan='10' style='padding:25px; text-align:center; color: var(--text-muted);'>Nenhum registro encontrado no inventário ou na tabela de equipamentos.</td></tr>";
           return;
         }
 
-        const qtdAlmox = dadosCruzadosCompletos.filter(d => d.status === 'Em Almoxarifado').length;
-        const qtdTransf = dadosCruzadosCompletos.filter(d => d.status === 'Transferido').length;
+        const qtdAlmox = dadosCruzadosCompletos.filter(d => (d.status || '').toLowerCase().includes('almoxarifado')).length;
+        const qtdOutros = dadosCruzadosCompletos.length - qtdAlmox;
 
-        exibirStatus(`Nuvem Conectada (${dadosCruzadosCompletos.length} total | ${qtdAlmox} no Almoxarifado | ${qtdTransf} Transferidos)`, "sucesso");
+        exibirStatus(`Nuvem Conectada (${dadosCruzadosCompletos.length} total | ${qtdAlmox} no Almoxarifado | ${qtdOutros} em Outros Setores/Status)`, "sucesso");
         preencherFiltrosSelects();
         aplicarFiltros();
 
@@ -878,9 +937,18 @@
       dadosFiltrados.forEach(r => {
         // Badge de status dinâmico
         let statusBg, statusColor;
-        if (r.status === 'Em Almoxarifado') {
+        const st = (r.status || '').toLowerCase();
+        if (st.includes('almoxarifado') || st.includes('disponível') || st.includes('disponivel')) {
           statusBg = '#dcfce7'; statusColor = '#15803d';
-        } else if (r.status === 'Transferido') {
+        } else if (st.includes('operação') || st.includes('operacao') || st.includes('instalado')) {
+          statusBg = '#dbeafe'; statusColor = '#1e40af';
+        } else if (st.includes('manutenção') || st.includes('manutencao') || st.includes('reparo')) {
+          statusBg = '#ffedd5'; statusColor = '#c2410c';
+        } else if (st.includes('reserva')) {
+          statusBg = '#ede9fe'; statusColor = '#5b21b6';
+        } else if (st.includes('baixado') || st.includes('descarte') || st.includes('inoperante')) {
+          statusBg = '#fee2e2'; statusColor = '#991b1b';
+        } else if (st.includes('transferido') || st.includes('trânsito') || st.includes('transito')) {
           statusBg = '#fef3c7'; statusColor = '#92400e';
         } else {
           statusBg = '#e2e8f0'; statusColor = '#475569';
@@ -925,12 +993,15 @@
 
       document.getElementById('analytics-edit-id').value = item.id;
       document.getElementById('analytics-edit-origem').value = item.origem || 'Inventário A&V';
-      document.getElementById('analytics-edit-categoria').value = item.classe || '';
       document.getElementById('analytics-edit-codigo').value = item.patrimonio || '';
+      document.getElementById('analytics-edit-categoria').value = item.classe || '';
       document.getElementById('analytics-edit-marca').value = item.fabricante || '';
       document.getElementById('analytics-edit-modelo').value = item.modelo || '';
       document.getElementById('analytics-edit-sn').value = item.num_serie || '';
       document.getElementById('analytics-edit-local').value = item.codigo_local || '';
+      if (document.getElementById('analytics-edit-status')) {
+        document.getElementById('analytics-edit-status').value = item.status || 'Em Almoxarifado';
+      }
       document.getElementById('analytics-edit-observacoes').value = item.observacoes || '';
 
       const modal = document.getElementById('modalEditarAnalytics');
@@ -951,8 +1022,11 @@
 
       const itemAtual = dadosCruzadosCompletos.find(i => String(i.id) === String(idItem));
       const novoLocalInput = document.getElementById('analytics-edit-local').value.trim();
-      // Normaliza para o formato exato que está na tabela "locais" do Supabase (sem pontos, sem zeros à esquerda)
       const localParaSupabase = normalizarParaSupabase(novoLocalInput);
+
+      const novoStatus = document.getElementById('analytics-edit-status')
+        ? document.getElementById('analytics-edit-status').value
+        : (isLocalAlmoxarifado(localParaSupabase) ? 'Em Almoxarifado' : 'Em Operação');
 
       const dadosAtualizados = {
         categoria: document.getElementById('analytics-edit-categoria').value.trim(),
@@ -960,7 +1034,8 @@
         marca: document.getElementById('analytics-edit-marca').value.trim(),
         modelo: document.getElementById('analytics-edit-modelo').value.trim(),
         sn: document.getElementById('analytics-edit-sn').value.trim() || 'S/N',
-        local: novoLocalInput,
+        local: localParaSupabase,
+        status: novoStatus,
         observacoes: document.getElementById('analytics-edit-observacoes').value.trim()
       };
 
@@ -971,12 +1046,21 @@
           const numId = idItem.replace('inv_', '');
           const { error } = await _supabase
             .from('inventario')
-            .update({ ...dadosAtualizados, local: localParaSupabase })
+            .update({
+              categoria: dadosAtualizados.categoria,
+              codigo: dadosAtualizados.codigo,
+              marca: dadosAtualizados.marca,
+              modelo: dadosAtualizados.modelo,
+              sn: dadosAtualizados.sn,
+              local: localParaSupabase,
+              observacoes: dadosAtualizados.observacoes
+            })
             .eq('id', numId);
 
           if (error) throw error;
         } else {
-          const { error } = await _supabase
+          // Atualiza em equipamentos diferenciando pelo Número de Série (SN)
+          let query = _supabase
             .from('equipamentos')
             .update({
               classe: dadosAtualizados.categoria,
@@ -985,10 +1069,16 @@
               modelo: dadosAtualizados.modelo,
               num_serie: dadosAtualizados.sn,
               codigo_local: localParaSupabase,
-              status: isLocalAlmoxarifado(localParaSupabase) ? 'Em Almoxarifado' : 'Transferido'
-            })
-            .eq('patrimonio', itemAtual ? itemAtual.patrimonio : dadosAtualizados.codigo);
+              status: dadosAtualizados.status
+            });
 
+          if (itemAtual && itemAtual.raw_num_serie && itemAtual.raw_num_serie !== 'S/N' && itemAtual.raw_num_serie !== 'SN') {
+            query = query.eq('patrimonio', itemAtual.raw_patrimonio || itemAtual.patrimonio).eq('num_serie', itemAtual.raw_num_serie);
+          } else {
+            query = query.eq('patrimonio', itemAtual ? (itemAtual.raw_patrimonio || itemAtual.patrimonio) : dadosAtualizados.codigo);
+          }
+
+          const { error } = await query;
           if (error) throw error;
         }
 
@@ -1012,25 +1102,21 @@
         return;
       }
 
-      const confirmacao = confirm(
-        `⚠️ CONFIRMAÇÃO DE EXCLUSÃO DE EQUIPAMENTO\n\n` +
-        `Tem certeza que deseja excluir permanentemente este equipamento?\n\n` +
+      const confirmMsg = `Tem certeza que deseja excluir o equipamento abaixo?\n\n` +
         `• Patrimônio: ${item.patrimonio}\n` +
         `• Classe: ${item.classe}\n` +
-        `• Fabricante/Modelo: ${item.fabricante} - ${item.modelo}\n` +
-        `• Nº de Série: ${item.num_serie}\n` +
-        `• Local: ${item.setor_local}\n` +
-        `• Status: ${item.status}\n\n` +
-        `Esta ação removerá o registro do banco de dados na nuvem e não poderá ser desfeita.`
-      );
+        `• Modelo: ${item.modelo}\n` +
+        `• Nº Série: ${item.num_serie}\n` +
+        `• Local: ${item.setor_local}\n\n` +
+        `Esta ação removerá o registro do Supabase.`;
 
-      if (!confirmacao) return;
+      if (!confirm(confirmMsg)) return;
 
       try {
-        if (!_supabase) throw new Error("Supabase não conectado");
+        if (!_supabase) throw new Error("Supabase não disponível");
 
-        if (item.origem === 'Inventário A&V' || idItem.startsWith('inv_')) {
-          const numId = idItem.replace('inv_', '');
+        if (item.id.startsWith('inv_')) {
+          const numId = item.id.replace('inv_', '');
           const { error } = await _supabase
             .from('inventario')
             .delete()
@@ -1038,20 +1124,22 @@
 
           if (error) throw error;
         } else {
-          const { error } = await _supabase
-            .from('equipamentos')
-            .delete()
-            .eq('patrimonio', item.patrimonio);
-
+          let query = _supabase.from('equipamentos').delete();
+          if (item.raw_num_serie && item.raw_num_serie !== 'S/N' && item.raw_num_serie !== 'SN') {
+            query = query.eq('patrimonio', item.raw_patrimonio || item.patrimonio).eq('num_serie', item.raw_num_serie);
+          } else {
+            query = query.eq('patrimonio', item.raw_patrimonio || item.patrimonio);
+          }
+          const { error } = await query;
           if (error) throw error;
         }
 
-        alert("✅ Equipamento excluído com sucesso!");
+        alert("🗑️ Equipamento excluído com sucesso!");
         await inicializarEBuscarDados();
 
       } catch (error) {
-        console.error("Erro ao excluir equipamento:", error);
-        alert("Erro ao excluir equipamento: " + (error.message || error));
+        console.error("Erro ao excluir:", error);
+        alert("Erro ao excluir do Supabase: " + (error.message || error));
       }
     }
 

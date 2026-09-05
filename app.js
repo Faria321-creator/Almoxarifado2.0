@@ -271,6 +271,65 @@ function renderizarTabela() {
 }
 
 // ==========================================
+// MAPA DE PREFIXOS DE PATRIMÔNIO POR CATEGORIA
+// ==========================================
+const MAPA_PATRIMONIO_PREFIXO = {
+    'Microfone': 'MIC',
+    'Consoles': 'CON',
+    'Processadores': 'PRC',
+    'Amplificadores': 'AMP',
+    'Line Array': 'LIN',
+    'Caixa Acustica': 'CXA',
+    'Subwoofer': 'SUB',
+    'Notebooks/Tablet': 'NTB',
+    'Acessorios Multimidia': 'ACM',
+    'Pedestais': 'PED',
+    'Telas de Projeção': 'TLP',
+    'Televisores': 'TLV',
+    'Receptor de Áudio RF': 'RAR',
+    'Transmissores de Áudio RF': 'TAR',
+    'Antenas': 'ANT',
+    'Distribuidor de Sinal antena RF': 'DSA',
+    'Conversor de Sinal de RF/Luz': 'CSR',
+    'Projetores': 'PRJ',
+    'Iluminação Cênica': 'ILC',
+    'Rede de Dados': 'RDD',
+    'Distribuidores de Energia': 'DSE',
+    'Intrumentos Musicais': 'IMS',
+    'Equipamentos de Video CFTV': 'EDV',
+    'Conversores de Energia': 'CNE',
+    'Conversor AD/DA Áudio': 'CNA',
+    'Distribuidores de Áudio': 'DAU',
+    'Distribuidores de Midia': 'RPM',
+    'Racks de Transporte': 'RKT',
+    'Fones de Ouvido': 'FON',
+    'Outros': 'OUT',
+
+    // Apelidos defensivos para preservar compatibilidade com registros anteriores
+    'Aplicadores': 'AMP',
+    'Processadores de áudio': 'PRC',
+    'Caixas de Som': 'CXA',
+    'SubGrave': 'SUB',
+    'Notebooks': 'NTB',
+    'TVs': 'TLV',
+    'Antenas RF': 'ANT',
+    'Fones EAR / Monitor': 'FON',
+    'HeardSet': 'HDS',
+    'HeadSet': 'HDS'
+};
+
+function autoPreencherPatrimonio() {
+    const categoriaSelect = document.getElementById('categoria');
+    const campoPatrimonio = document.getElementById('patrimonio');
+    if (!categoriaSelect || !campoPatrimonio) return;
+    
+    const cat = categoriaSelect.value;
+    if (MAPA_PATRIMONIO_PREFIXO[cat]) {
+        campoPatrimonio.value = MAPA_PATRIMONIO_PREFIXO[cat];
+    }
+}
+
+// ==========================================
 // MODAL DE CADASTRO
 // ==========================================
 function abrirModalCadastro() {
@@ -278,6 +337,7 @@ function abrirModalCadastro() {
     if (modal) {
         modal.classList.add('active');
         if (window.lucide) lucide.createIcons();
+        autoPreencherPatrimonio();
     }
 }
 
@@ -291,7 +351,23 @@ function fecharModalCadastro() {
 // ==========================================
 async function cadastrarNovoItem() {
     const categoria = document.getElementById('categoria').value;
-    const codigo = document.getElementById('codigo').value.trim();
+    const campoPatrimonio = document.getElementById('patrimonio');
+    const campoNumPatrimonio = document.getElementById('num_patrimonio') || document.getElementById('codigo');
+
+    const prefixoPat = campoPatrimonio ? campoPatrimonio.value.trim() : '';
+    const numeroPat = campoNumPatrimonio ? campoNumPatrimonio.value.trim() : '';
+
+    let codigo = '';
+    if (prefixoPat && numeroPat) {
+        if (numeroPat.toUpperCase().startsWith(prefixoPat.toUpperCase())) {
+            codigo = numeroPat;
+        } else {
+            codigo = `${prefixoPat} - ${numeroPat}`;
+        }
+    } else {
+        codigo = numeroPat || prefixoPat || 'S/N';
+    }
+
     const marca = document.getElementById('marca').value.trim();
     const modelo = document.getElementById('modelo').value.trim();
     const sn = document.getElementById('sn').value.trim() || 'S/N';
@@ -329,7 +405,7 @@ async function cadastrarNovoItem() {
 
         // 2. Envia cópia mapeada para o Analytics ('equipamentos')
         try {
-            const statusEquip = isLocalAlmoxarifado(novoItem.local) ? 'Em Almoxarifado' : 'Transferido';
+            const statusEquip = isLocalAlmoxarifado(novoItem.local) ? 'Em Almoxarifado' : 'Em Operação';
             await supabaseClient.from('equipamentos').upsert({
                 patrimonio: novoItem.codigo,
                 classe: novoItem.categoria,
@@ -338,13 +414,15 @@ async function cadastrarNovoItem() {
                 num_serie: novoItem.sn,
                 codigo_local: novoItem.local,
                 status: statusEquip
-            }, { onConflict: 'patrimonio' });
+            });
         } catch (e) {
             console.warn("Upsert em equipamentos:", e);
         }
 
         // Limpa o formulário
-        document.getElementById('codigo').value = '';
+        if (document.getElementById('num_patrimonio')) document.getElementById('num_patrimonio').value = '';
+        if (document.getElementById('codigo')) document.getElementById('codigo').value = '';
+        if (document.getElementById('patrimonio')) document.getElementById('patrimonio').value = '';
         document.getElementById('marca').value = '';
         document.getElementById('modelo').value = '';
         document.getElementById('sn').value = '';
@@ -467,8 +545,8 @@ async function salvarEdicaoItem() {
 
         // Atualiza cópia no Analytics com status dinâmico
         try {
-            const statusEquip = isLocalAlmoxarifado(dadosAtualizados.local) ? 'Em Almoxarifado' : 'Transferido';
-            await supabaseClient.from('equipamentos').upsert({
+            const statusEquip = isLocalAlmoxarifado(dadosAtualizados.local) ? 'Em Almoxarifado' : 'Em Operação';
+            let queryEq = supabaseClient.from('equipamentos').update({
                 patrimonio: dadosAtualizados.codigo,
                 classe: dadosAtualizados.categoria,
                 fabricante: dadosAtualizados.marca,
@@ -476,7 +554,15 @@ async function salvarEdicaoItem() {
                 num_serie: dadosAtualizados.sn,
                 codigo_local: dadosAtualizados.local,
                 status: statusEquip
-            }, { onConflict: 'patrimonio' });
+            });
+
+            if (itemAtual && itemAtual.sn && itemAtual.sn !== 'S/N' && itemAtual.sn !== 'SN') {
+                queryEq = queryEq.eq('patrimonio', itemAtual.codigo).eq('num_serie', itemAtual.sn);
+            } else {
+                queryEq = queryEq.eq('patrimonio', itemAtual ? itemAtual.codigo : dadosAtualizados.codigo);
+            }
+
+            await queryEq;
         } catch (e) {}
 
         fecharModal();
@@ -585,7 +671,9 @@ async function duplicarItem(id) {
     }
 
     document.getElementById("categoria").value = itemOriginal.categoria || "Outros";
-    document.getElementById("codigo").value = itemOriginal.codigo ? `${itemOriginal.codigo}` : "";
+    autoPreencherPatrimonio();
+    const campoNumPat = document.getElementById("num_patrimonio") || document.getElementById("codigo");
+    if (campoNumPat) campoNumPat.value = itemOriginal.codigo ? `${itemOriginal.codigo}` : "";
     document.getElementById("marca").value = itemOriginal.marca || "";
     document.getElementById("modelo").value = itemOriginal.modelo || "";
     document.getElementById("sn").value = itemOriginal.sn ? `${itemOriginal.sn} (CÓPIA)` : "S/N";
