@@ -613,4 +613,4 @@ async function fazerLogout() {
         if (supabaseClient) await supabaseClient.auth.signOut();
         window.location.href = 'login183.html';
     }
-}
+}
