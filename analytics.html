@@ -371,14 +371,15 @@
         <button class="modal-close" onclick="fecharModalEdicao()"><i data-lucide="x"></i></button>
       </div>
 
-      <form id="formEditarAnalytics" onsubmit="event.preventDefault(); salvarEdicaoItemAnalytics();">
+      <form id="formEditarAnalytics" autocomplete="off" onsubmit="event.preventDefault(); salvarEdicaoItemAnalytics();">
         <input type="hidden" id="analytics-edit-id">
         <input type="hidden" id="analytics-edit-origem">
         
         <div class="form-grid-2">
           <div class="form-group">
             <label for="analytics-edit-codigo">Patrimônio</label>
-            <input type="text" id="analytics-edit-codigo" placeholder="Ex: CNA-0003, MIC, TLV..." required>
+            <input type="text" id="analytics-edit-codigo" placeholder="Ex: RDD, EDV, CNA-0003..." required autocomplete="off">
+            <small style="display:block; font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">Código ou sigla da classe (ex: RDD). O que difere cada aparelho é o Nº de Série.</small>
           </div>
 
           <div class="form-group">
@@ -1059,7 +1060,7 @@
 
           if (error) throw error;
         } else {
-          // Atualiza em equipamentos diferenciando pelo Número de Série (SN)
+          // Atualiza em equipamentos diferenciando principalmente pelo Número de Série (SN)
           let query = _supabase
             .from('equipamentos')
             .update({
@@ -1072,8 +1073,9 @@
               status: dadosAtualizados.status
             });
 
+          // Se tiver número de série, localiza o aparelho físico pelo Nº de Série
           if (itemAtual && itemAtual.raw_num_serie && itemAtual.raw_num_serie !== 'S/N' && itemAtual.raw_num_serie !== 'SN') {
-            query = query.eq('patrimonio', itemAtual.raw_patrimonio || itemAtual.patrimonio).eq('num_serie', itemAtual.raw_num_serie);
+            query = query.eq('num_serie', itemAtual.raw_num_serie);
           } else {
             query = query.eq('patrimonio', itemAtual ? (itemAtual.raw_patrimonio || itemAtual.patrimonio) : dadosAtualizados.codigo);
           }
@@ -1088,7 +1090,12 @@
 
       } catch (error) {
         console.error("Erro ao salvar edição no Analytics:", error);
-        alert("Erro ao atualizar equipamento: " + (error.message || error));
+        const msg = error.message || String(error);
+        if (msg.includes("equipamentos_pkey") || msg.includes("duplicate key") || error.code === '23505') {
+          alert(`⚠️ Conflito no Supabase: A tabela "equipamentos" ainda possui uma trava de chave primária única no campo patrimônio ("equipamentos_pkey").\n\nComo os patrimônios se repetem entre aparelhos da mesma classe (ex: vários RDD com números de série diferentes), é necessário rodar o seguinte comando no SQL Editor do Supabase para destravar:\n\nALTER TABLE equipamentos DROP CONSTRAINT equipamentos_pkey;`);
+        } else {
+          alert("Erro ao atualizar equipamento: " + msg);
+        }
       }
     }
 

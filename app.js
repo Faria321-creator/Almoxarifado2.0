@@ -406,17 +406,46 @@ async function cadastrarNovoItem() {
         // 2. Envia cópia mapeada para o Analytics ('equipamentos')
         try {
             const statusEquip = isLocalAlmoxarifado(novoItem.local) ? 'Em Almoxarifado' : 'Em Operação';
-            await supabaseClient.from('equipamentos').upsert({
-                patrimonio: novoItem.codigo,
-                classe: novoItem.categoria,
-                fabricante: novoItem.marca,
-                modelo: novoItem.modelo,
-                num_serie: novoItem.sn,
-                codigo_local: novoItem.local,
-                status: statusEquip
-            });
+            if (novoItem.sn && novoItem.sn !== 'S/N' && novoItem.sn !== 'SN') {
+                const { data: existente } = await supabaseClient
+                    .from('equipamentos')
+                    .select('num_serie')
+                    .eq('num_serie', novoItem.sn)
+                    .maybeSingle();
+
+                if (existente) {
+                    await supabaseClient.from('equipamentos').update({
+                        patrimonio: novoItem.codigo,
+                        classe: novoItem.categoria,
+                        fabricante: novoItem.marca,
+                        modelo: novoItem.modelo,
+                        codigo_local: novoItem.local,
+                        status: statusEquip
+                    }).eq('num_serie', novoItem.sn);
+                } else {
+                    await supabaseClient.from('equipamentos').insert([{
+                        patrimonio: novoItem.codigo,
+                        classe: novoItem.categoria,
+                        fabricante: novoItem.marca,
+                        modelo: novoItem.modelo,
+                        num_serie: novoItem.sn,
+                        codigo_local: novoItem.local,
+                        status: statusEquip
+                    }]);
+                }
+            } else {
+                await supabaseClient.from('equipamentos').insert([{
+                    patrimonio: novoItem.codigo,
+                    classe: novoItem.categoria,
+                    fabricante: novoItem.marca,
+                    modelo: novoItem.modelo,
+                    num_serie: novoItem.sn || 'S/N',
+                    codigo_local: novoItem.local,
+                    status: statusEquip
+                }]);
+            }
         } catch (e) {
-            console.warn("Upsert em equipamentos:", e);
+            console.warn("Sincronização em equipamentos:", e);
         }
 
         // Limpa o formulário
@@ -557,7 +586,7 @@ async function salvarEdicaoItem() {
             });
 
             if (itemAtual && itemAtual.sn && itemAtual.sn !== 'S/N' && itemAtual.sn !== 'SN') {
-                queryEq = queryEq.eq('patrimonio', itemAtual.codigo).eq('num_serie', itemAtual.sn);
+                queryEq = queryEq.eq('num_serie', itemAtual.sn);
             } else {
                 queryEq = queryEq.eq('patrimonio', itemAtual ? itemAtual.codigo : dadosAtualizados.codigo);
             }
