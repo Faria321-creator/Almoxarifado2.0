@@ -193,84 +193,6 @@ function executarBusca() {
 }
 
 // ==========================================
-// RENDERIZAÇÃO DA TABELA
-// ==========================================
-function renderizarTabela() {
-    const corpoTabela = document.getElementById('corpoTabela');
-    const avisoVazio = document.getElementById('avisoVazio');
-    const contador = document.getElementById('contadorItens');
-    const buscaTexto = (document.getElementById('buscaRapida')?.value || '').toLowerCase().trim();
-
-    if (!corpoTabela) return;
-    corpoTabela.innerHTML = '';
-
-    const itensFiltrados = inventario.filter(item => {
-        // Só exibe itens que estão no almoxarifado (Local 183 / 01.03.21.007)
-        const estaNoAlmoxarifado = isLocalAlmoxarifado(item.local);
-        if (!estaNoAlmoxarifado) return false;
-
-        const atendeCategoria = (filtroCategoriaAtivo === 'Todos' || item.categoria === filtroCategoriaAtivo);
-        const atendeBusca = !buscaTexto ||
-            (item.codigo || '').toLowerCase().includes(buscaTexto) ||
-            (item.marca || '').toLowerCase().includes(buscaTexto) ||
-            (item.modelo || '').toLowerCase().includes(buscaTexto) ||
-            (item.sn || '').toLowerCase().includes(buscaTexto) ||
-            (item.local || '').toLowerCase().includes(buscaTexto) ||
-            (item.observacoes || '').toLowerCase().includes(buscaTexto) ||
-            (item.categoria || '').toLowerCase().includes(buscaTexto);
-
-        return atendeCategoria && atendeBusca;
-    });
-
-    // Conta total de itens no almoxarifado (sem filtros de busca/categoria)
-    const totalNoAlmoxarifado = inventario.filter(item => isLocalAlmoxarifado(item.local)).length;
-
-    if (contador) {
-        contador.textContent = `${itensFiltrados.length} listados de ${totalNoAlmoxarifado} em estoque no almoxarifado`;
-    }
-
-    if (itensFiltrados.length === 0) {
-        if (avisoVazio) avisoVazio.style.display = 'block';
-        if (window.lucide) lucide.createIcons();
-        return;
-    }
-
-    if (avisoVazio) avisoVazio.style.display = 'none';
-
-    itensFiltrados.forEach(item => {
-        const tr = document.createElement('tr');
-        
-        const botoesAcao = `
-            <div class="action-buttons">
-                <button class="btn-action edit" onclick="abrirModalEdicao('${item.id}')" title="Editar"><i data-lucide="edit-3" style="width:14px; height:14px;"></i></button>
-                <button class="btn-action duplicate" onclick="duplicarItem('${item.id}')" title="Duplicar"><i data-lucide="copy" style="width:14px; height:14px;"></i></button>
-                <button class="btn-action delete" onclick="removerItemDoInventario('${item.id}')" title="Excluir"><i data-lucide="trash-2" style="width:14px; height:14px;"></i></button>
-            </div>
-        `;
-
-        const tdFoto = item.foto 
-            ? `<td style="text-align:center;"><img src="${item.foto}" class="miniatura-tabela" onclick="abrirFotoGrande('${item.foto}')" alt="Foto"></td>`
-            : `<td style="text-align:center;"><span class="sem-foto-icon"><i data-lucide="camera-off" style="width:16px; height:16px;"></i></span></td>`;
-
-        tr.innerHTML = `
-            ${tdFoto}
-            <td><span class="badge-cat">${item.categoria || 'Outros'}</span></td>
-            <td><strong>${item.codigo || '-'}</strong></td>
-            <td>${item.marca || '-'}</td>
-            <td>${item.modelo || '-'}</td>
-            <td><code style="font-size: 0.78rem; background: #f1f5f9; padding: 2px 5px; border-radius: 4px;">${item.sn || 'S/N'}</code></td>
-            <td><b>${item.quantidade ?? 1}</b></td>
-            <td><span class="badge-loc">📍 ${item.local || '183'}</span></td>
-            <td style="color: var(--text-muted); font-size: 0.8rem;">${item.observacoes || '-'}</td>
-            <td>${botoesAcao}</td>
-        `;
-        corpoTabela.appendChild(tr);
-    });
-
-    if (window.lucide) lucide.createIcons();
-}
-
-// ==========================================
 // MAPA DE PREFIXOS DE PATRIMÔNIO POR CATEGORIA
 // ==========================================
 const MAPA_PATRIMONIO_PREFIXO = {
@@ -327,6 +249,162 @@ function autoPreencherPatrimonio() {
     if (MAPA_PATRIMONIO_PREFIXO[cat]) {
         campoPatrimonio.value = MAPA_PATRIMONIO_PREFIXO[cat];
     }
+}
+
+function autoPreencherPatrimonioEdicao() {
+    const categoriaSelect = document.getElementById('edit-categoria');
+    const campoPatrimonio = document.getElementById('edit-patrimonio');
+    if (!categoriaSelect || !campoPatrimonio) return;
+    
+    const cat = categoriaSelect.value;
+    if (MAPA_PATRIMONIO_PREFIXO[cat]) {
+        campoPatrimonio.value = MAPA_PATRIMONIO_PREFIXO[cat];
+    }
+}
+
+// Extrai a sigla/classe do Patrimônio e o Nº do Patrimônio a partir de item.codigo
+function extrairPatrimonioENumero(item) {
+    const rawCodigo = (item.codigo || '').trim();
+    const prefixoPadrao = MAPA_PATRIMONIO_PREFIXO[item.categoria] || '';
+
+    if (!rawCodigo) {
+        return {
+            patrimonio: prefixoPadrao || '-',
+            numPatrimonio: '-'
+        };
+    }
+
+    // Se tiver separador " - " (ex: "RDD - 11833" ou "MIC - 000123")
+    if (rawCodigo.includes(' - ')) {
+        const partes = rawCodigo.split(' - ');
+        return {
+            patrimonio: partes[0].trim() || prefixoPadrao || '-',
+            numPatrimonio: partes.slice(1).join(' - ').trim() || '-'
+        };
+    }
+
+    // Se tiver hífen sem espaços (ex: "RDD-11833")
+    const matchHifen = rawCodigo.match(/^([A-Za-z]+)\s*-\s*([A-Za-z0-9\.\_\/]+)$/);
+    if (matchHifen) {
+        return {
+            patrimonio: matchHifen[1].toUpperCase(),
+            numPatrimonio: matchHifen[2]
+        };
+    }
+
+    // Se tiver espaço simples (ex: "RDD 11833")
+    const matchEspaco = rawCodigo.match(/^([A-Za-z]{2,5})\s+([0-9\.\_\/\-]+)$/);
+    if (matchEspaco) {
+        return {
+            patrimonio: matchEspaco[1].toUpperCase(),
+            numPatrimonio: matchEspaco[2]
+        };
+    }
+
+    // Se for apenas a sigla (ex: "RDD", "MIC", "TLV")
+    if (/^[A-Za-z]{2,5}$/.test(rawCodigo)) {
+        return {
+            patrimonio: rawCodigo.toUpperCase(),
+            numPatrimonio: '-'
+        };
+    }
+
+    // Se começar por número (ex: "11833")
+    if (/^[0-9]/.test(rawCodigo)) {
+        return {
+            patrimonio: prefixoPadrao || '-',
+            numPatrimonio: rawCodigo
+        };
+    }
+
+    return {
+        patrimonio: rawCodigo,
+        numPatrimonio: '-'
+    };
+}
+
+// ==========================================
+// RENDERIZAÇÃO DA TABELA
+// ==========================================
+function renderizarTabela() {
+    const corpoTabela = document.getElementById('corpoTabela');
+    const avisoVazio = document.getElementById('avisoVazio');
+    const contador = document.getElementById('contadorItens');
+    const buscaTexto = (document.getElementById('buscaRapida')?.value || '').toLowerCase().trim();
+
+    if (!corpoTabela) return;
+    corpoTabela.innerHTML = '';
+
+    const itensFiltrados = inventario.filter(item => {
+        // Só exibe itens que estão no almoxarifado (Local 183 / 01.03.21.007)
+        const estaNoAlmoxarifado = isLocalAlmoxarifado(item.local);
+        if (!estaNoAlmoxarifado) return false;
+
+        const atendeCategoria = (filtroCategoriaAtivo === 'Todos' || item.categoria === filtroCategoriaAtivo);
+        const patInfo = extrairPatrimonioENumero(item);
+        const atendeBusca = !buscaTexto ||
+            (item.codigo || '').toLowerCase().includes(buscaTexto) ||
+            (patInfo.patrimonio || '').toLowerCase().includes(buscaTexto) ||
+            (patInfo.numPatrimonio || '').toLowerCase().includes(buscaTexto) ||
+            (item.marca || '').toLowerCase().includes(buscaTexto) ||
+            (item.modelo || '').toLowerCase().includes(buscaTexto) ||
+            (item.sn || '').toLowerCase().includes(buscaTexto) ||
+            (item.local || '').toLowerCase().includes(buscaTexto) ||
+            (item.observacoes || '').toLowerCase().includes(buscaTexto) ||
+            (item.categoria || '').toLowerCase().includes(buscaTexto);
+
+        return atendeCategoria && atendeBusca;
+    });
+
+    // Conta total de itens no almoxarifado (sem filtros de busca/categoria)
+    const totalNoAlmoxarifado = inventario.filter(item => isLocalAlmoxarifado(item.local)).length;
+
+    if (contador) {
+        contador.textContent = `${itensFiltrados.length} listados de ${totalNoAlmoxarifado} em estoque no almoxarifado`;
+    }
+
+    if (itensFiltrados.length === 0) {
+        if (avisoVazio) avisoVazio.style.display = 'block';
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    if (avisoVazio) avisoVazio.style.display = 'none';
+
+    itensFiltrados.forEach(item => {
+        const tr = document.createElement('tr');
+        
+        const botoesAcao = `
+            <div class="action-buttons">
+                <button class="btn-action edit" onclick="abrirModalEdicao('${item.id}')" title="Editar"><i data-lucide="edit-3" style="width:14px; height:14px;"></i></button>
+                <button class="btn-action duplicate" onclick="duplicarItem('${item.id}')" title="Duplicar"><i data-lucide="copy" style="width:14px; height:14px;"></i></button>
+                <button class="btn-action delete" onclick="removerItemDoInventario('${item.id}')" title="Excluir"><i data-lucide="trash-2" style="width:14px; height:14px;"></i></button>
+            </div>
+        `;
+
+        const tdFoto = item.foto 
+            ? `<td style="text-align:center;"><img src="${item.foto}" class="miniatura-tabela" onclick="abrirFotoGrande('${item.foto}')" alt="Foto"></td>`
+            : `<td style="text-align:center;"><span class="sem-foto-icon"><i data-lucide="camera-off" style="width:16px; height:16px;"></i></span></td>`;
+
+        const patInfo = extrairPatrimonioENumero(item);
+
+        tr.innerHTML = `
+            ${tdFoto}
+            <td><span class="badge-cat">${item.categoria || 'Outros'}</span></td>
+            <td><strong style="color: var(--secondary);">${patInfo.patrimonio}</strong></td>
+            <td><strong style="color: #0284c7;">${patInfo.numPatrimonio}</strong></td>
+            <td>${item.marca || '-'}</td>
+            <td>${item.modelo || '-'}</td>
+            <td><code style="font-size: 0.78rem; background: #f1f5f9; padding: 2px 5px; border-radius: 4px;">${item.sn || 'S/N'}</code></td>
+            <td><b>${item.quantidade ?? 1}</b></td>
+            <td><span class="badge-loc">📍 ${item.local || '183'}</span></td>
+            <td style="color: var(--text-muted); font-size: 0.8rem;">${item.observacoes || '-'}</td>
+            <td>${botoesAcao}</td>
+        `;
+        corpoTabela.appendChild(tr);
+    });
+
+    if (window.lucide) lucide.createIcons();
 }
 
 // ==========================================
@@ -488,9 +566,21 @@ function abrirModalEdicao(idItem) {
         return;
     }
 
+    const patInfo = extrairPatrimonioENumero(item);
+
     document.getElementById('edit-id').value = item.id;
     document.getElementById('edit-categoria').value = item.categoria || 'Outros';
-    document.getElementById('edit-codigo').value = item.codigo || '';
+
+    const campoEditPat = document.getElementById('edit-patrimonio');
+    const campoEditNum = document.getElementById('edit-num-patrimonio');
+    
+    if (campoEditPat) {
+        campoEditPat.value = (patInfo.patrimonio && patInfo.patrimonio !== '-') ? patInfo.patrimonio : (MAPA_PATRIMONIO_PREFIXO[item.categoria] || '');
+    }
+    if (campoEditNum) {
+        campoEditNum.value = (patInfo.numPatrimonio && patInfo.numPatrimonio !== '-') ? patInfo.numPatrimonio : '';
+    }
+
     document.getElementById('edit-marca').value = item.marca || '';
     document.getElementById('edit-modelo').value = item.modelo || '';
     document.getElementById('edit-sn').value = item.sn || '';
@@ -550,9 +640,23 @@ async function salvarEdicaoItem() {
         urlFoto = await uploadFotoParaSupabase(fotoFileEdicao);
     }
 
+    const prefixoPat = document.getElementById('edit-patrimonio')?.value.trim() || '';
+    const numeroPat = document.getElementById('edit-num-patrimonio')?.value.trim() || '';
+
+    let codigo = '';
+    if (prefixoPat && numeroPat) {
+        if (numeroPat.toUpperCase().startsWith(prefixoPat.toUpperCase())) {
+            codigo = numeroPat;
+        } else {
+            codigo = `${prefixoPat} - ${numeroPat}`;
+        }
+    } else {
+        codigo = numeroPat || prefixoPat || 'S/N';
+    }
+
     const dadosAtualizados = {
         categoria: document.getElementById('edit-categoria').value,
-        codigo: document.getElementById('edit-codigo').value.trim(),
+        codigo: codigo,
         marca: document.getElementById('edit-marca').value.trim(),
         modelo: document.getElementById('edit-modelo').value.trim(),
         sn: document.getElementById('edit-sn').value.trim() || 'S/N',
@@ -701,8 +805,16 @@ async function duplicarItem(id) {
 
     document.getElementById("categoria").value = itemOriginal.categoria || "Outros";
     autoPreencherPatrimonio();
+
+    const patInfo = extrairPatrimonioENumero(itemOriginal);
+    const campoPat = document.getElementById("patrimonio");
     const campoNumPat = document.getElementById("num_patrimonio") || document.getElementById("codigo");
-    if (campoNumPat) campoNumPat.value = itemOriginal.codigo ? `${itemOriginal.codigo}` : "";
+    if (campoPat && patInfo.patrimonio && patInfo.patrimonio !== '-') {
+        campoPat.value = patInfo.patrimonio;
+    }
+    if (campoNumPat) {
+        campoNumPat.value = (patInfo.numPatrimonio && patInfo.numPatrimonio !== '-') ? `${patInfo.numPatrimonio}` : "";
+    }
     document.getElementById("marca").value = itemOriginal.marca || "";
     document.getElementById("modelo").value = itemOriginal.modelo || "";
     document.getElementById("sn").value = itemOriginal.sn ? `${itemOriginal.sn} (CÓPIA)` : "S/N";

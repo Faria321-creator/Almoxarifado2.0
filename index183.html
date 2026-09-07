@@ -320,6 +320,7 @@
               <th style="width: 50px; text-align: center;">Foto</th>
               <th>Classe / Categoria</th>
               <th>Patrimônio</th>
+              <th>Nº Patrimônio</th>
               <th>Fabricante</th>
               <th>Modelo</th>
               <th>Nº Série (SN)</th>
@@ -456,7 +457,7 @@
         <div class="form-grid-2">
           <div class="form-group">
             <label for="edit-categoria">Classe / Categoria</label>
-            <select id="edit-categoria" required>
+            <select id="edit-categoria" required onchange="autoPreencherPatrimonioEdicao()">
               <option value="" disabled selected hidden>Selecione...</option>
               
               <option value="Microfone">Microfone</option>
@@ -491,9 +492,15 @@
               <option value="Outros">Outros</option>
             </select>
           </div>
-          <div class="form-group">
-            <label for="edit-codigo">Nº Patrimônio</label>
-            <input type="text" id="edit-codigo" required>
+          <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+              <label for="edit-patrimonio">Patrimônio</label>
+              <input type="text" id="edit-patrimonio" placeholder="Ex: MIC, CON, AMP...">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label for="edit-num-patrimonio">Nº Patrimônio</label>
+              <input type="text" id="edit-num-patrimonio" placeholder="Ex: 11833 ou 000123">
+            </div>
           </div>
 
           <div class="form-group">

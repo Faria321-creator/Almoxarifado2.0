@@ -422,8 +422,8 @@
           <span>Manutenção Externa</span>
           <div class="kpi-icon"><i data-lucide="wrench"></i></div>
         </div>
-        <div class="kpi-value" id="kpiManutencao">21 itens</div>
-        <div class="kpi-footer">Total em assistência: R$ 190.256,32</div>
+        <div class="kpi-value" id="kpiManutencao">--</div>
+        <div class="kpi-footer" id="kpiManutencaoFooter">Carregando dados...</div>
       </div>
 
     </div>
@@ -464,7 +464,7 @@
           <p>Controle de demandas de montagens, prazos críticos e comunicação de gargalos operacionais.</p>
           <div class="metric">
             <span>Demandas</span>
-            <span id="cardAgendaMetric" style="color: var(--primary); font-weight: 700;">9 Ativas</span>
+            <span id="cardAgendaMetric" style="color: var(--primary); font-weight: 700;">Carregando...</span>
           </div>
         </div>
 
@@ -663,13 +663,21 @@
 
         if (rows && rows.length > 1) {
           const heads = rows[0];
-          const iOp = getColIdx(heads, ['operador', 'colaborador'], 0);
-          const iMat = getColIdx(heads, ['material', 'equipamento'], 1);
-          const iSai = getColIdx(heads, ['saida'], 2);
-          const iLoc = getColIdx(heads, ['local'], 4);
-          const iEnt = getColIdx(heads, ['entrega', 'retorno'], 5);
+          // Estrutura fixa: [0]Operadores, [1]Material, [2]Data Saída, [3]Aprovação, [4]Local, [5]Data Entrega, [6]Status, [7]Obs, [8]OS
+          const iOp   = getColIdx(heads, ['operador', 'colaborador'], 0);
+          const iMat  = getColIdx(heads, ['material', 'equipamento'], 1);
+          const iSai  = getColIdx(heads, ['saida'], 2);
+          const iLoc  = getColIdx(heads, ['local'], 4);
+          // Busca coluna de data de entrega excluindo colunas que contenham "status"
+          let iEnt = 5;
+          if (heads && heads.length > 0) {
+            for (let ci = 0; ci < heads.length; ci++) {
+              const col = String(heads[ci] || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+              if (col.includes('data') && col.includes('entrega')) { iEnt = ci; break; }
+            }
+          }
           const iStat = getColIdx(heads, ['status'], 6);
-          const iOs = getColIdx(heads, ['os', 'ordem'], 8);
+          const iOs   = getColIdx(heads, ['os', 'ordem'], 8);
 
           for (let r = 1; r < rows.length; r++) {
             const row = rows[r];
@@ -717,14 +725,21 @@
 
         if (rows && rows.length > 1) {
           const heads = rows[0];
-          const iCol = getColIdx(heads, ['colaborador', 'operador', 'nome'], 0);
-          const iMat = getColIdx(heads, ['material', 'modelo'], 1);
-          const iSer = getColIdx(heads, ['serie', 'n° serie'], 2);
-          const iLoc = getColIdx(heads, ['local'], 3);
-          const iSai = getColIdx(heads, ['saida'], 4);
-          const iEnt = getColIdx(heads, ['entrega'], 5);
+          const iCol  = getColIdx(heads, ['colaborador', 'operador', 'nome'], 0);
+          const iMat  = getColIdx(heads, ['material', 'modelo'], 1);
+          const iSer  = getColIdx(heads, ['serie', 'n° serie'], 2);
+          const iLoc  = getColIdx(heads, ['local'], 3);
+          const iSai  = getColIdx(heads, ['saida'], 4);
+          // Busca "Data Entrega" especificamente para não confundir com "Status de entrega"
+          let iEnt = 5;
+          if (heads && heads.length > 0) {
+            for (let ci = 0; ci < heads.length; ci++) {
+              const col = String(heads[ci] || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+              if (col.includes('data') && col.includes('entrega')) { iEnt = ci; break; }
+            }
+          }
           const iStat = getColIdx(heads, ['status'], 6);
-          const iOs = getColIdx(heads, ['os', 'ordem'], 8);
+          const iOs   = getColIdx(heads, ['os', 'ordem'], 8);
 
           for (let r = 1; r < rows.length; r++) {
             const row = rows[r];
@@ -829,14 +844,7 @@
 
       // 4. Demandas da Agenda de Eventos (Auto-Save ou Padrão)
       const demandasSalvas = localStorage.getItem('db_agenda');
-      const demandasAgenda = demandasSalvas ? JSON.parse(demandasSalvas) : [
-        { data: '2026-08-26', nome: 'Patrimoniar Caixas de Som Novas (Porto Itaguaçu)', cat: 'Patrimônio', status: 'Em Andamento', local: 'Porto Itaguaçu' },
-        { data: '2026-08-26', nome: 'Separar Material para Montagem de Iluminação', cat: 'Montagem', status: 'Em Andamento', local: 'Santuário' },
-        { data: '2026-08-27', nome: 'Separar Material para Jantar no Convento', cat: 'Evento', status: 'Em Andamento', local: 'Convento' },
-        { data: '2026-08-29', nome: 'Separar Material para Morro do Cruzeiro', cat: 'Evento', status: 'Em Andamento', local: 'Morro do Cruzeiro' },
-        { data: '2026-08-29', nome: 'Separar Material para Tribuna Sul - Rosário', cat: 'Evento', status: 'Em Andamento', local: 'Tribuna Sul' },
-        { data: '2026-09-04', nome: 'Fim dos Testes e Verificação - Inauguração Fachada Oeste', cat: 'Gargalo', status: 'Em Andamento', local: 'Fachada Oeste' }
-      ];
+      const demandasAgenda = demandasSalvas ? JSON.parse(demandasSalvas) : [];
 
       const demandasAtivas = demandasAgenda.filter(d => {
         const s = String(d.status || '').toLowerCase();
@@ -874,7 +882,8 @@
           let totalValor = 0;
           itensManut.forEach(i => totalValor += ((i.valor || 0) * (i.qtd || 1)));
           document.getElementById('kpiManutencao').innerText = `${itensManut.length} itens`;
-          document.querySelector('.kpi-card.success .kpi-footer').innerText = `Total em assistência: ${totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+          const footerManut = document.getElementById('kpiManutencaoFooter');
+          if (footerManut) footerManut.innerText = `Total em assistência: ${totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
         } catch (e) {}
       }
 
@@ -915,14 +924,21 @@
 
       todosRegistros.forEach(item => {
         if (!item.isDevolvido) {
-          qtdPendentes++;
+          // Só conta como "pendência" itens que tenham data de entrega definida
+          // ou que sejam dos módulos operacionais (excluindo TVs sem prazo)
+          const temData = item.diasDiff !== null;
+          const isModuloOperacional = item.modulo === 'Operação' || item.modulo === 'Notebooks' || item.modulo === 'Agenda';
 
-          if (item.diasDiff !== null) {
-            if (item.diasDiff < 0) {
-              qtdAtrasados++;
-              itensCriticosAtrasados.push(item);
-            } else if (item.diasDiff === 0 || item.diasDiff <= 3) {
-              qtdVencendoHojeOuBreve++;
+          if (temData || isModuloOperacional) {
+            qtdPendentes++;
+
+            if (temData) {
+              if (item.diasDiff < 0) {
+                qtdAtrasados++;
+                itensCriticosAtrasados.push(item);
+              } else if (item.diasDiff === 0 || item.diasDiff <= 3) {
+                qtdVencendoHojeOuBreve++;
+              }
             }
           }
         }
