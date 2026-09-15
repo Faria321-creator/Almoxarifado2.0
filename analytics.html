@@ -314,7 +314,7 @@
 
       <div class="filter-group">
         <label for="search"><i data-lucide="search" style="width: 14px; height: 14px;"></i> Pesquisa Geral:</label>
-        <input type="text" id="search" placeholder="Buscar por patrimônio, classe, modelo, marca ou série..." onkeyup="aplicarFiltros()">
+        <input type="text" id="search" placeholder="Buscar por patrimônio, nº patrimônio, classe, modelo, marca ou série..." onkeyup="aplicarFiltros()">
       </div>
     </div>
 
@@ -340,6 +340,7 @@
           <thead>
             <tr>
               <th>Patrimônio</th>
+              <th>Nº Patrimônio</th>
               <th>Classe</th>
               <th>Fabricante</th>
               <th>Modelo</th>
@@ -353,7 +354,7 @@
           </thead>
           <tbody id="tblBody">
             <tr>
-              <td colspan="10" style="text-align: center; padding: 30px; color: var(--text-muted);">
+              <td colspan="11" style="text-align: center; padding: 30px; color: var(--text-muted);">
                 Carregando registros do banco de dados...
               </td>
             </tr>
@@ -377,15 +378,9 @@
         <input type="hidden" id="analytics-edit-origem">
         
         <div class="form-grid-2">
-          <div class="form-group">
-            <label for="analytics-edit-codigo">Patrimônio</label>
-            <input type="text" id="analytics-edit-codigo" placeholder="Ex: RDD, EDV, CNA-0003..." required autocomplete="off">
-            <small style="display:block; font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">Código ou sigla da classe (ex: RDD). O que difere cada aparelho é o Nº de Série.</small>
-          </div>
-
-          <div class="form-group">
+          <div class="form-group full-width">
             <label for="analytics-edit-categoria">Classe</label>
-            <select id="analytics-edit-categoria" required>
+            <select id="analytics-edit-categoria" onchange="autoPreencherPatrimonioEdicaoAnalytics()" required>
               <option value="" disabled selected hidden>Selecione a Classe...</option>
               <option value="Microfone">Microfone</option>
               <option value="Consoles">Consoles</option>
@@ -418,6 +413,18 @@
               <option value="Fones de Ouvido">Fones de Ouvido</option>
               <option value="Outros">Outros</option>
             </select>
+          </div>
+
+          <div class="form-group">
+            <label for="analytics-edit-patrimonio">Patrimônio</label>
+            <input type="text" id="analytics-edit-patrimonio" placeholder="Ex: RDD, PRC, MIC..." required autocomplete="off">
+            <small style="display:block; font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">Sigla da classe (preenchida automaticamente)</small>
+          </div>
+
+          <div class="form-group">
+            <label for="analytics-edit-num-patrimonio">Nº Patrimônio</label>
+            <input type="text" id="analytics-edit-num-patrimonio" placeholder="Ex: 00027789, 11833 ou código" autocomplete="off">
+            <small style="display:block; font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">Número ou código específico do patrimônio</small>
           </div>
 
           <div class="form-group">
@@ -479,6 +486,116 @@
     // CÓDIGO OFICIAL NO SUPABASE (locais table): 10321007
     const CODIGOS_ALMOXARIFADO = ['183', '01.03.21.007', '0103.21.007', '10321007', '010321007', '01.03.21.7'];
     const CODIGO_ALMOX_SUPABASE = '10321007'; // Código exato na tabela "locais" do Supabase
+
+    // MAPA DE PREFIXOS DE PATRIMÔNIO POR CATEGORIA
+    const MAPA_PATRIMONIO_PREFIXO = {
+      'Microfone': 'MIC',
+      'Consoles': 'CON',
+      'Processadores': 'PRC',
+      'Amplificadores': 'AMP',
+      'Line Array': 'LIN',
+      'Caixa Acustica': 'CXA',
+      'Subwoofer': 'SUB',
+      'Notebooks/Tablet': 'NTB',
+      'Acessorios Multimidia': 'ACM',
+      'Pedestais': 'PED',
+      'Telas de Projeção': 'TLP',
+      'Televisores': 'TLV',
+      'Receptor de Áudio RF': 'RAR',
+      'Transmissores de Áudio RF': 'TAR',
+      'Antenas': 'ANT',
+      'Distribuidor de Sinal antena RF': 'DSA',
+      'Conversor de Sinal de RF/Luz': 'CSR',
+      'Projetores': 'PRJ',
+      'Iluminação Cênica': 'ILC',
+      'Rede de Dados': 'RDD',
+      'Distribuidores de Energia': 'DSE',
+      'Intrumentos Musicais': 'IMS',
+      'Equipamentos de Video CFTV': 'EDV',
+      'Conversores de Energia': 'CNE',
+      'Conversor AD/DA Áudio': 'CNA',
+      'Distribuidores de Áudio': 'DAU',
+      'Distribuidores de Midia': 'RPM',
+      'Racks de Transporte': 'RKT',
+      'Fones de Ouvido': 'FON',
+      'Outros': 'OUT',
+      'Aplicadores': 'AMP',
+      'Processadores de áudio': 'PRC',
+      'Caixas de Som': 'CXA',
+      'SubGrave': 'SUB',
+      'Notebooks': 'NTB',
+      'TVs': 'TLV',
+      'Antenas RF': 'ANT',
+      'Fones EAR / Monitor': 'FON',
+      'HeardSet': 'HDS',
+      'HeadSet': 'HDS'
+    };
+
+    function autoPreencherPatrimonioEdicaoAnalytics() {
+      const catSelect = document.getElementById('analytics-edit-categoria');
+      const patInput = document.getElementById('analytics-edit-patrimonio');
+      if (!catSelect || !patInput) return;
+      const cat = catSelect.value;
+      if (MAPA_PATRIMONIO_PREFIXO[cat] && (!patInput.value || patInput.value === '-')) {
+        patInput.value = MAPA_PATRIMONIO_PREFIXO[cat];
+      }
+    }
+
+    // Extrai a sigla/classe do Patrimônio e o Nº do Patrimônio a partir de item.codigo / item.patrimonio
+    function extrairPatrimonioENumero(item) {
+      const rawCodigo = (item.codigo || item.patrimonio || '').trim();
+      const prefixoPadrao = MAPA_PATRIMONIO_PREFIXO[item.categoria || item.classe] || '';
+
+      if (!rawCodigo) {
+        return {
+          patrimonio: prefixoPadrao || '-',
+          numPatrimonio: '-'
+        };
+      }
+
+      if (rawCodigo.includes(' - ')) {
+        const partes = rawCodigo.split(' - ');
+        return {
+          patrimonio: partes[0].trim() || prefixoPadrao || '-',
+          numPatrimonio: partes.slice(1).join(' - ').trim() || '-'
+        };
+      }
+
+      const matchHifen = rawCodigo.match(/^([A-Za-z]+)\s*-\s*([A-Za-z0-9\.\_\/:]+)$/);
+      if (matchHifen) {
+        return {
+          patrimonio: matchHifen[1].toUpperCase(),
+          numPatrimonio: matchHifen[2]
+        };
+      }
+
+      const matchEspaco = rawCodigo.match(/^([A-Za-z]{2,5})\s+([0-9\.\_\/\-:]+)$/);
+      if (matchEspaco) {
+        return {
+          patrimonio: matchEspaco[1].toUpperCase(),
+          numPatrimonio: matchEspaco[2]
+        };
+      }
+
+      if (/^[A-Za-z]{2,5}$/.test(rawCodigo)) {
+        return {
+          patrimonio: rawCodigo.toUpperCase(),
+          numPatrimonio: '-'
+        };
+      }
+
+      if (/^[0-9]/.test(rawCodigo)) {
+        return {
+          patrimonio: prefixoPadrao || '-',
+          numPatrimonio: rawCodigo
+        };
+      }
+
+      return {
+        patrimonio: rawCodigo,
+        numPatrimonio: '-'
+      };
+    }
 
     function isLocalAlmoxarifado(codigoLocal) {
       if (!codigoLocal) return false;
@@ -734,10 +851,13 @@
           const codLocal = inv.local ? String(inv.local).trim() : '01.03.21.007';
           const infoLoc = obterInfoLocal(codLocal);
           const estaNoAlmox = isLocalAlmoxarifado(codLocal);
+          const patInfo = extrairPatrimonioENumero({ codigo: codPatrimonio, categoria: inv.categoria });
 
           listaUnificada.push({
             id: `inv_${inv.id}`,
-            patrimonio: codPatrimonio,
+            codigo_completo: codPatrimonio,
+            patrimonio: patInfo.patrimonio,
+            num_patrimonio: patInfo.numPatrimonio,
             classe: inv.categoria || 'Outros',
             fabricante: inv.marca || '-',
             modelo: inv.modelo || '-',
@@ -772,6 +892,7 @@
             const codLocal = eq.codigo_local ? String(eq.codigo_local).trim() : '01.03.21.007';
             const infoLoc = obterInfoLocal(codLocal);
             const estaNoAlmox = isLocalAlmoxarifado(codLocal);
+            const patInfo = extrairPatrimonioENumero({ codigo: pat, categoria: eq.classe });
 
             // Garante um ID único para cada aparelho mesmo se houver múltiplos itens no mesmo setor
             const idUnico = `eq_${pat || 'item'}_${sn ? sn.replace(/[^a-zA-Z0-9]/g, '_') : index}`;
@@ -780,7 +901,9 @@
               id: idUnico,
               raw_patrimonio: pat,
               raw_num_serie: sn,
-              patrimonio: pat || '-',
+              codigo_completo: pat,
+              patrimonio: patInfo.patrimonio,
+              num_patrimonio: patInfo.numPatrimonio,
               classe: eq.classe || 'Outros',
               fabricante: eq.fabricante || '-',
               modelo: eq.modelo || '-',
@@ -800,7 +923,7 @@
 
         if (dadosCruzadosCompletos.length === 0) {
           exibirStatus("Nenhum equipamento cadastrado no Supabase", "erro");
-          document.getElementById('tblBody').innerHTML = "<tr><td colspan='10' style='padding:25px; text-align:center; color: var(--text-muted);'>Nenhum registro encontrado no inventário ou na tabela de equipamentos.</td></tr>";
+          document.getElementById('tblBody').innerHTML = "<tr><td colspan='11' style='padding:25px; text-align:center; color: var(--text-muted);'>Nenhum registro encontrado no inventário ou na tabela de equipamentos.</td></tr>";
           return;
         }
 
@@ -846,7 +969,7 @@
         let matchSetor = !setorSel || item.setor_local === setorSel;
         let matchProj = !projSel || item.projeto === projSel;
         
-        let textoLinha = `${item.patrimonio} ${item.classe} ${item.fabricante} ${item.modelo} ${item.num_serie} ${item.codigo_local} ${item.setor_local} ${item.projeto} ${item.status}`.toLowerCase();
+        let textoLinha = `${item.patrimonio} ${item.num_patrimonio} ${item.codigo_completo} ${item.classe} ${item.fabricante} ${item.modelo} ${item.num_serie} ${item.codigo_local} ${item.setor_local} ${item.projeto} ${item.status}`.toLowerCase();
         let matchBusca = !busca || textoLinha.includes(busca);
 
         return matchStatus && matchSetor && matchProj && matchBusca;
@@ -931,7 +1054,7 @@
 
       const tbody = document.getElementById('tblBody');
       if (!dadosFiltrados.length) {
-        tbody.innerHTML = "<tr><td colspan='10' style='padding:25px; text-align:center; color: var(--text-muted);'>Nenhum equipamento encontrado para os filtros selecionados.</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='11' style='padding:25px; text-align:center; color: var(--text-muted);'>Nenhum equipamento encontrado para os filtros selecionados.</td></tr>";
         return;
       }
 
@@ -965,7 +1088,8 @@
 
         html += `
           <tr>
-            <td><strong>${r.patrimonio}</strong></td>
+            <td><strong style="color: var(--secondary);">${r.patrimonio}</strong></td>
+            <td><strong style="color: #0284c7;">${r.num_patrimonio || '-'}</strong></td>
             <td><span class="badge-tag" style="background:#e2e8f0; color:#334155;">${r.classe}</span></td>
             <td>${r.fabricante}</td>
             <td><b>${r.modelo}</b></td>
@@ -995,11 +1119,18 @@
 
       document.getElementById('analytics-edit-id').value = item.id;
       document.getElementById('analytics-edit-origem').value = item.origem || 'Inventário A&V';
-      document.getElementById('analytics-edit-codigo').value = item.patrimonio || '';
+      
+      const patVal = (item.patrimonio && item.patrimonio !== '-') 
+        ? item.patrimonio 
+        : (MAPA_PATRIMONIO_PREFIXO[item.classe] || '');
+      const numPatVal = (item.num_patrimonio && item.num_patrimonio !== '-') ? item.num_patrimonio : '';
+
+      document.getElementById('analytics-edit-patrimonio').value = patVal;
+      document.getElementById('analytics-edit-num-patrimonio').value = numPatVal;
       document.getElementById('analytics-edit-categoria').value = item.classe || '';
       document.getElementById('analytics-edit-marca').value = item.fabricante || '';
       document.getElementById('analytics-edit-modelo').value = item.modelo || '';
-      document.getElementById('analytics-edit-sn').value = item.num_serie || '';
+      document.getElementById('analytics-edit-sn').value = (item.num_serie && item.num_serie !== 'S/N') ? item.num_serie : '';
       document.getElementById('analytics-edit-local').value = item.codigo_local || '';
       if (document.getElementById('analytics-edit-status')) {
         document.getElementById('analytics-edit-status').value = item.status || 'Em Almoxarifado';
@@ -1030,9 +1161,25 @@
         ? document.getElementById('analytics-edit-status').value
         : (isLocalAlmoxarifado(localParaSupabase) ? 'Em Almoxarifado' : 'Em Operação');
 
+      const prefixoPat = document.getElementById('analytics-edit-patrimonio')?.value.trim() || '';
+      const numeroPat = document.getElementById('analytics-edit-num-patrimonio')?.value.trim() || '';
+
+      let codigoCompleto = '';
+      if (prefixoPat && numeroPat && numeroPat !== '-') {
+        if (numeroPat.toUpperCase().startsWith(prefixoPat.toUpperCase())) {
+          codigoCompleto = numeroPat;
+        } else {
+          codigoCompleto = `${prefixoPat} - ${numeroPat}`;
+        }
+      } else {
+        codigoCompleto = (numeroPat && numeroPat !== '-') ? numeroPat : (prefixoPat || 'S/N');
+      }
+
       const dadosAtualizados = {
         categoria: document.getElementById('analytics-edit-categoria').value.trim(),
-        codigo: document.getElementById('analytics-edit-codigo').value.trim(),
+        codigo: codigoCompleto,
+        patrimonio: prefixoPat,
+        num_patrimonio: numeroPat,
         marca: document.getElementById('analytics-edit-marca').value.trim(),
         modelo: document.getElementById('analytics-edit-modelo').value.trim(),
         sn: document.getElementById('analytics-edit-sn').value.trim() || 'S/N',
@@ -1046,6 +1193,8 @@
 
         if (origem === 'Inventário A&V' || idItem.startsWith('inv_')) {
           const numId = idItem.replace('inv_', '');
+          // Preserva '01.03.21.007' no inventário se estiver no almoxarifado para manter total compatibilidade com o inventário
+          const localParaInventario = isLocalAlmoxarifado(novoLocalInput) ? '01.03.21.007' : localParaSupabase;
           const { error } = await _supabase
             .from('inventario')
             .update({
@@ -1054,12 +1203,28 @@
               marca: dadosAtualizados.marca,
               modelo: dadosAtualizados.modelo,
               sn: dadosAtualizados.sn,
-              local: localParaSupabase,
+              local: localParaInventario,
               observacoes: dadosAtualizados.observacoes
             })
             .eq('id', numId);
 
           if (error) throw error;
+
+          // Sincroniza também na tabela equipamentos se houver num_serie correspondente
+          if (dadosAtualizados.sn && dadosAtualizados.sn !== 'S/N' && dadosAtualizados.sn !== 'SN') {
+            try {
+              await _supabase.from('equipamentos').update({
+                classe: dadosAtualizados.categoria,
+                patrimonio: dadosAtualizados.codigo,
+                fabricante: dadosAtualizados.marca,
+                modelo: dadosAtualizados.modelo,
+                codigo_local: localParaSupabase,
+                status: dadosAtualizados.status
+              }).eq('num_serie', itemAtual?.raw_num_serie || dadosAtualizados.sn);
+            } catch (eSync) {
+              console.warn("Sync equipamentos secundário:", eSync);
+            }
+          }
         } else {
           // Atualiza em equipamentos diferenciando principalmente pelo Número de Série (SN)
           let query = _supabase
@@ -1078,7 +1243,7 @@
           if (itemAtual && itemAtual.raw_num_serie && itemAtual.raw_num_serie !== 'S/N' && itemAtual.raw_num_serie !== 'SN') {
             query = query.eq('num_serie', itemAtual.raw_num_serie);
           } else {
-            query = query.eq('patrimonio', itemAtual ? (itemAtual.raw_patrimonio || itemAtual.patrimonio) : dadosAtualizados.codigo);
+            query = query.eq('patrimonio', itemAtual ? (itemAtual.raw_patrimonio || itemAtual.codigo_completo || itemAtual.patrimonio) : dadosAtualizados.codigo);
           }
 
           const { error } = await query;
@@ -1111,7 +1276,7 @@
       }
 
       const confirmMsg = `Tem certeza que deseja excluir o equipamento abaixo?\n\n` +
-        `• Patrimônio: ${item.patrimonio}\n` +
+        `• Patrimônio: ${item.patrimonio} (${item.num_patrimonio || '-'})\n` +
         `• Classe: ${item.classe}\n` +
         `• Modelo: ${item.modelo}\n` +
         `• Nº Série: ${item.num_serie}\n` +
@@ -1134,9 +1299,9 @@
         } else {
           let query = _supabase.from('equipamentos').delete();
           if (item.raw_num_serie && item.raw_num_serie !== 'S/N' && item.raw_num_serie !== 'SN') {
-            query = query.eq('patrimonio', item.raw_patrimonio || item.patrimonio).eq('num_serie', item.raw_num_serie);
+            query = query.eq('num_serie', item.raw_num_serie);
           } else {
-            query = query.eq('patrimonio', item.raw_patrimonio || item.patrimonio);
+            query = query.eq('patrimonio', item.raw_patrimonio || item.codigo_completo || item.patrimonio);
           }
           const { error } = await query;
           if (error) throw error;

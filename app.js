@@ -8,15 +8,16 @@ const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_U
 // ==========================================
 // CÓDIGOS DO ALMOXARIFADO (SALA 183)
 // ==========================================
-const CODIGOS_ALMOXARIFADO = ['183', '01.03.21.007', '0103.21.007', '01.03.21.7'];
+const CODIGOS_ALMOXARIFADO = ['183', '01.03.21.007', '0103.21.007', '10321007', '010321007', '01.03.21.7'];
 
 function isLocalAlmoxarifado(codigoLocal) {
     if (!codigoLocal) return false;
     const cod = String(codigoLocal).trim();
-    // Compara diretamente e também sem pontos/espaços para cobrir variações
-    return CODIGOS_ALMOXARIFADO.some(c =>
-        cod === c || cod.replace(/[.\s]/g, '') === c.replace(/[.\s]/g, '')
-    );
+    const codNorm = cod.replace(/[.\s]/g, '').replace(/^0+/, '');
+    return CODIGOS_ALMOXARIFADO.some(c => {
+        const cNorm = c.replace(/[.\s]/g, '').replace(/^0+/, '');
+        return cod === c || codNorm === cNorm;
+    });
 }
 
 // ==========================================
