@@ -356,6 +356,7 @@
       <li><a href="TVs em circulacao.html"><i data-lucide="tv"></i> Controle de TVs</a></li>
       <li><a href="historico operacao.html"><i data-lucide="send"></i> Lançamentos Operação</a></li>
       <li><a href="historico notebooks.html"><i data-lucide="monitor"></i> Lançamentos Notebooks</a></li>
+      <li><a href="insumos.html"><i data-lucide="package-search"></i> Controle de Insumos</a></li>
     </ul>
 
     <div style="margin-top: auto; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; padding-left: 10px; padding-right: 10px;">
@@ -520,6 +521,17 @@
           <div class="metric">
             <span>Notebooks</span>
             <span id="cardNotebooksMetric" style="color: var(--primary); font-weight: 700;">Histórico</span>
+          </div>
+        </div>
+
+        <!-- Card 9: Controle de Insumos -->
+        <div class="dashboard-card" onclick="window.location.href='insumos.html'">
+          <div class="icon" style="background:#fce7f3; color:#db2777;"><i data-lucide="package-search"></i></div>
+          <h3>Controle de Insumos</h3>
+          <p>Controle de entradas, saídas, estoque mínimo e histórico dos materiais usados pela Manutenção e Operação.</p>
+          <div class="metric">
+            <span>Itens cadastrados</span>
+            <span id="cardInsumosMetric" style="color: var(--primary); font-weight: 700;">Carregando...</span>
           </div>
         </div>
 
@@ -911,6 +923,31 @@
         console.warn('Erro ao carregar Supabase em index.html:', e);
       }
 
+      // 7. Controle de Insumos (Auto-Save / localStorage)
+      try {
+        const insumosSalvos = localStorage.getItem('almoxarifado_insumos_v1');
+        let dbInsumos = insumosSalvos ? JSON.parse(insumosSalvos) : null;
+        if (!dbInsumos || !dbInsumos.products) {
+          dbInsumos = {
+            products: [
+              { id: 'p1', name: 'Pano Micro fibra', code: '66131', min: 2, stock: 10 },
+              { id: 'p2', name: 'Alcool Isopropilico 100ml', code: '2930', min: 2, stock: 8 },
+              { id: 'p3', name: 'Fita Crep 25mm x 50mt', code: '2930', min: 5, stock: 20 },
+              { id: 'p4', name: 'Fita Crep 48mm x 50mt', code: '53916', min: 5, stock: 20 },
+              { id: 'p5', name: 'Oleo Anticorrosivo Desingripante 300ml Tekbold', code: '1994', min: 1, stock: 6 },
+              { id: 'p6', name: 'Limpa Contato 30ml', code: '27066', min: 1, stock: 6 },
+              { id: 'p7', name: 'Pilha Duracell AA', code: '1055', min: 100, stock: 570 },
+              { id: 'p8', name: 'Bateria 9V Duracell', code: '1042', min: 12, stock: 17 }
+            ]
+          };
+        }
+        const totalInsumos = dbInsumos.products.length;
+        const elInsumos = document.getElementById('cardInsumosMetric');
+        if (elInsumos) elInsumos.innerText = `${totalInsumos}`;
+      } catch (e) {
+        console.warn('Erro ao carregar dados de insumos:', e);
+      }
+
       processarMetricasEAlertas();
       filtrarTabelaGeral();
       lucide.createIcons();
@@ -955,7 +992,7 @@
       document.getElementById('countVencendoTab').innerText = qtdVencendoHojeOuBreve;
       document.getElementById('countTodosTab').innerText = todosRegistros.length;
 
-      // Renderiza Banner de Alerta se houver atrasos
+      // Renderiza Banner de Alerta se houver atrasos ou reposição de insumos
       const alertContainer = document.getElementById('alertsContainer');
       alertContainer.innerHTML = '';
 
@@ -975,6 +1012,47 @@
             <a href="${primeiroAtrasado.link}" class="alert-banner-btn"><i data-lucide="arrow-right" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> Resolver no Módulo</a>
           </div>
         `;
+      } else {
+        // Alerta de reposição de insumos (quando não há pendências atrasadas)
+        try {
+          const insumosSalvos = localStorage.getItem('almoxarifado_insumos_v1');
+          let dbInsumos = insumosSalvos ? JSON.parse(insumosSalvos) : null;
+          if (!dbInsumos || !dbInsumos.products) {
+            dbInsumos = {
+              products: [
+                { id: 'p1', name: 'Pano Micro fibra', code: '66131', min: 2, stock: 10 },
+                { id: 'p2', name: 'Alcool Isopropilico 100ml', code: '2930', min: 2, stock: 8 },
+                { id: 'p3', name: 'Fita Crep 25mm x 50mt', code: '2930', min: 5, stock: 20 },
+                { id: 'p4', name: 'Fita Crep 48mm x 50mt', code: '53916', min: 5, stock: 20 },
+                { id: 'p5', name: 'Oleo Anticorrosivo Desingripante 300ml Tekbold', code: '1994', min: 1, stock: 6 },
+                { id: 'p6', name: 'Limpa Contato 30ml', code: '27066', min: 1, stock: 6 },
+                { id: 'p7', name: 'Pilha Duracell AA', code: '1055', min: 100, stock: 570 },
+                { id: 'p8', name: 'Bateria 9V Duracell', code: '1042', min: 12, stock: 17 }
+              ]
+            };
+          }
+          let qtdCrit = 0;
+          let qtdWarn = 0;
+          dbInsumos.products.forEach(p => {
+            if (p.stock < p.min) qtdCrit++;
+            else if (p.min > 0 && p.stock <= p.min * 1.5) qtdWarn++;
+          });
+          const totalRepor = qtdCrit + qtdWarn;
+          if (totalRepor > 0) {
+            alertContainer.innerHTML = `
+              <div class="alert-banner">
+                <div class="alert-banner-content">
+                  <div class="alert-banner-icon"><i data-lucide="alert-triangle" style="width: 28px; height: 28px;"></i></div>
+                  <div class="alert-banner-text">
+                    <h4>ATENÇÃO: Existem ${totalRepor} insumo(s) precisando de reposição!</h4>
+                    <p>${qtdCrit ? `${qtdCrit} item(ns) em situação urgente. ` : ''}${qtdWarn ? `${qtdWarn} item(ns) próximos do estoque mínimo.` : ''}</p>
+                  </div>
+                </div>
+                <a href="insumos.html" class="alert-banner-btn"><i data-lucide="arrow-right" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> Resolver no Módulo</a>
+              </div>
+            `;
+          }
+        } catch (e) {}
       }
     }
 
