@@ -16,7 +16,8 @@ const SYNC_MODULE_KEYS = [
   'db_tvs_estoque',
   'db_tvs_novas',
   'manutencao_db',
-  'db_material_estudo'
+  'db_material_estudo',
+  'almoxarifado_insumos_v1'
 ];
 
 const EXCEL_FILE_MAP = {
@@ -86,6 +87,46 @@ const DEFAULT_MATERIAL_ESTUDO_DATA = {
       { item: 2, tipo: "Pedestal", qtd: "2Un", desc: "Pedestal Girafa", retirado: "Almoxarifado Multimidia", local: "Devotinhos" }
     ]
   }
+};
+
+const DEFAULT_INSUMOS_DATA = {
+  products: [
+    { id: 'p1', name: 'Pano Micro fibra', code: '66131', min: 2, stock: 10 },
+    { id: 'p2', name: 'Alcool Isopropilico 100ml', code: '2930', min: 2, stock: 8 },
+    { id: 'p3', name: 'Fita Crep 25mm x 50mt', code: '2930', min: 5, stock: 20 },
+    { id: 'p4', name: 'Fita Crep 48mm x 50mt', code: '53916', min: 5, stock: 20 },
+    { id: 'p5', name: 'Oleo Anticorrosivo Desingripante 300ml Tekbold', code: '1994', min: 1, stock: 6 },
+    { id: 'p6', name: 'Limpa Contato 30ml', code: '27066', min: 1, stock: 6 },
+    { id: 'p7', name: 'Pilha Duracell AA', code: '1055', min: 100, stock: 570 },
+    { id: 'p8', name: 'Bateria 9V Duracell', code: '1042', min: 12, stock: 17 }
+  ],
+  requests: [
+    {
+      id: 'r1',
+      number: '125024',
+      date: '2026-08-20',
+      delivery: '2026-08-25',
+      obs: 'Solicitação inicial consolidada',
+      items: [
+        { productId: 'p1', ordered: 10, delivered: 10 },
+        { productId: 'p2', ordered: 8, delivered: 8 },
+        { productId: 'p3', ordered: 20, delivered: 20 },
+        { productId: 'p4', ordered: 20, delivered: 20 },
+        { productId: 'p5', ordered: 6, delivered: 6 },
+        { productId: 'p6', ordered: 6, delivered: 6 },
+        { productId: 'p7', ordered: 500, delivered: 500 }
+      ]
+    }
+  ],
+  moves: [
+    { id: 'm1', type: 'entrada', date: '2026-08-25', itemName: 'Pano Micro fibra', productId: 'p1', qty: 10, requestId: 'r1', requestNumber: '125024' },
+    { id: 'm2', type: 'entrada', date: '2026-08-25', itemName: 'Alcool Isopropilico 100ml', productId: 'p2', qty: 8, requestId: 'r1', requestNumber: '125024' },
+    { id: 'm3', type: 'entrada', date: '2026-08-25', itemName: 'Fita Crep 25mm x 50mt', productId: 'p3', qty: 20, requestId: 'r1', requestNumber: '125024' },
+    { id: 'm4', type: 'entrada', date: '2026-08-25', itemName: 'Fita Crep 48mm x 50mt', productId: 'p4', qty: 20, requestId: 'r1', requestNumber: '125024' },
+    { id: 'm5', type: 'entrada', date: '2026-08-25', itemName: 'Oleo Anticorrosivo Desingripante 300ml Tekbold', productId: 'p5', qty: 6, requestId: 'r1', requestNumber: '125024' },
+    { id: 'm6', type: 'entrada', date: '2026-08-25', itemName: 'Limpa Contato 30ml', productId: 'p6', qty: 6, requestId: 'r1', requestNumber: '125024' },
+    { id: 'm7', type: 'entrada', date: '2026-08-25', itemName: 'Pilha Duracell AA', productId: 'p7', qty: 500, requestId: 'r1', requestNumber: '125024' }
+  ]
 };
 
 window.SupabaseSync = {
@@ -184,11 +225,19 @@ window.SupabaseSync = {
                 this.originalSetItem(key, cloudValStr);
                 mudouAlgum = true;
               }
+            } else if (localValRaw && localValRaw !== 'null' && localValRaw !== '{}' && localValRaw !== '[]') {
+              // Se o local já possui dados (ex: insumos salvos no PC) mas a nuvem ainda não tem esta chave,
+              // marca para subir os dados locais para a nuvem!
+              this.hasLocalChanges = true;
             }
           }
 
           this.lastSyncTime = new Date();
           this.updateBadgeStatus('synced');
+
+          if (this.hasLocalChanges) {
+            this.schedulePush();
+          }
 
           if (mudouAlgum) {
             console.log("☁️ SupabaseSync: Dados atualizados da nuvem com sucesso!");
@@ -308,6 +357,13 @@ window.SupabaseSync = {
       }
     }
 
+    // 5. Controle de Insumos
+    const insumosLocal = localStorage.getItem('almoxarifado_insumos_v1');
+    if (!insumosLocal || insumosLocal === 'null' || insumosLocal === '{}') {
+      this.originalSetItem('almoxarifado_insumos_v1', JSON.stringify(DEFAULT_INSUMOS_DATA));
+      precisaSubir = true;
+    }
+
     if (precisaSubir) {
       await this.pushToCloud();
       this.refreshPageTables();
@@ -322,6 +378,7 @@ window.SupabaseSync = {
       if (typeof window.renderPastas === 'function') window.renderPastas();
       if (typeof window.renderFolders === 'function') window.renderFolders();
       if (typeof window.renderizarTabela === 'function' && window.dadosPlanilha) window.renderizarTabela(window.dadosPlanilha);
+      if (typeof window.carregarInsumos === 'function') window.carregarInsumos();
       if (window.lucide) window.lucide.createIcons();
     } catch (e) {
       console.warn("Erro ao atualizar interface após sincronização:", e);
