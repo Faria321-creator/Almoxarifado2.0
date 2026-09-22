@@ -554,9 +554,12 @@
       localStorage.setItem(KEY, JSON.stringify(db));
     }
 
-    const save = () => {
+    const save = (immediateSync = true) => {
       localStorage.setItem(KEY, JSON.stringify(db));
       render();
+      if (immediateSync && window.SupabaseSync && typeof window.SupabaseSync.pushToCloud === 'function') {
+        window.SupabaseSync.pushToCloud(true);
+      }
     };
 
     window.carregarInsumos = function() {
@@ -572,7 +575,7 @@
     };
 
     window.addEventListener('focus', () => {
-      if (window.SupabaseSync && typeof window.SupabaseSync.pullFromCloud === 'function') {
+      if (window.SupabaseSync && !window.SupabaseSync.hasLocalChanges && typeof window.SupabaseSync.pullFromCloud === 'function') {
         window.SupabaseSync.pullFromCloud();
       }
     });
@@ -791,21 +794,30 @@
             <input id="pMin" type="number" min="0" step="1" value="${p.min}">
           </div>
           <div class="form-group full-width">
-            <label>Estoque Atual (Somente Leitura)</label>
-            <input value="${fmt(p.stock)}" disabled style="background:#f8fafc; color:#64748b;">
+            <label>Estoque Atual (Quantidade em Estoque) *</label>
+            <input id="pStock" type="number" min="0" step="1" value="${p.stock}">
+            <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 3px;">Você pode ajustar a quantidade em estoque diretamente aqui para corrigir divergências.</small>
           </div>
         </div>
       `, () => {
         const name = document.getElementById('pName').value.trim();
         const code = document.getElementById('pCode').value.trim();
         const min = Number(document.getElementById('pMin').value || 0);
+        const stock = Number(document.getElementById('pStock').value || 0);
 
         if (!name) return showToast('Informe o nome do item.');
 
         p.name = name;
         p.code = code;
         p.min = min;
-        save();
+        p.stock = stock;
+
+        // Atualiza o nome nas movimentações vinculadas
+        (db.moves || []).forEach(m => {
+          if (m.productId === id) m.itemName = name;
+        });
+
+        save(true);
         closeModal();
         showToast('Material atualizado com sucesso!');
       });
@@ -815,15 +827,33 @@
       const p = productById(id);
       if (!p) return;
 
-      if (db.requests.some(r => r.items.some(i => i.productId === id)) || db.moves.some(m => m.productId === id)) {
-        return showToast('Este material possui histórico e não pode ser excluído.');
+      const hasReq = (db.requests || []).some(r => r.items && r.items.some(i => i.productId === id));
+      const hasMoves = (db.moves || []).some(m => m.productId === id);
+
+      let msg = `Deseja realmente excluir o material "${p.name}"?`;
+      if (hasReq || hasMoves) {
+        msg = `Atenção: O material "${p.name}" possui histórico registrado (solicitações ou movimentações).\n\nDeseja realmente excluir este material e APAGAR todos os registros vinculados a ele?`;
       }
 
-      if (confirm(`Deseja realmente excluir "${p.name}"?`)) {
-        db.products = db.products.filter(x => x.id !== id);
-        save();
-        showToast('Material excluído com sucesso.');
-      }
+      if (!confirm(msg)) return;
+
+      // Remove itens das solicitações
+      (db.requests || []).forEach(r => {
+        if (r.items) {
+          r.items = r.items.filter(i => i.productId !== id);
+        }
+      });
+      // Remove solicitações que ficaram sem itens
+      db.requests = (db.requests || []).filter(r => r.items && r.items.length > 0);
+
+      // Remove movimentações do produto
+      db.moves = (db.moves || []).filter(m => m.productId !== id);
+
+      // Remove o produto
+      db.products = db.products.filter(x => x.id !== id);
+
+      save(true);
+      showToast('Material e histórico excluídos com sucesso.');
     }
 
     // Modal: Nova Solicitação / Entrada
@@ -970,16 +1000,16 @@
       const r = db.requests.find(x => x.id === id);
       if (!r) return;
 
-      if (!confirm(`Deseja excluir a solicitação #${r.number}? O estoque entregue será deduzido automaticamente.`)) return;
+      if (!confirm(`Deseja excluir a solicitação #${r.number}?\n\nO estoque entregue nesta solicitação será deduzido automaticamente.`)) return;
 
-      r.items.forEach(i => {
+      (r.items || []).forEach(i => {
         const p = productById(i.productId);
-        if (p) p.stock -= Number(i.delivered || 0);
+        if (p) p.stock = Math.max(0, Number(p.stock || 0) - Number(i.delivered || 0));
       });
 
       db.requests = db.requests.filter(x => x.id !== id);
       db.moves = db.moves.filter(x => x.requestId !== id);
-      save();
+      save(true);
       showToast('Solicitação excluída e estoque ajustado.');
     }
 
@@ -1097,14 +1127,22 @@
       if (!m) return;
 
       if (m.type === 'entrada') {
-        return showToast('Edite ou exclua a solicitação para alterar esta entrada.');
+        if (!confirm(`Deseja excluir este lançamento de ENTRADA do histórico?\n\nItem: ${m.itemName}\nQuantidade: ${m.qty}\nSolicitação: #${m.requestNumber || '—'}\n\nO estoque deste material será estornado.`)) return;
+        const p = productById(m.productId);
+        if (p) {
+          p.stock = Math.max(0, Number(p.stock || 0) - Number(m.qty || 0));
+        }
+        db.moves = db.moves.filter(x => x.id !== id);
+        save(true);
+        showToast('Entrada excluída e estoque estornado.');
+        return;
       }
 
-      if (confirm('Deseja excluir esta saída? A quantidade retornará ao estoque.')) {
+      if (confirm(`Deseja excluir esta SAÍDA do histórico?\n\nItem: ${m.itemName}\nQuantidade: ${m.qty}\n\nA quantidade retornará ao estoque.`)) {
         const p = productById(m.productId);
-        if (p) p.stock += m.qty;
+        if (p) p.stock = Number(p.stock || 0) + Number(m.qty || 0);
         db.moves = db.moves.filter(x => x.id !== id);
-        save();
+        save(true);
         showToast('Saída excluída e estoque estornado.');
       }
     }

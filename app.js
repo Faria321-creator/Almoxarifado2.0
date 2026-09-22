@@ -680,24 +680,51 @@ async function salvarEdicaoItem() {
         // Atualiza cópia no Analytics com status dinâmico
         try {
             const statusEquip = isLocalAlmoxarifado(dadosAtualizados.local) ? 'Em Almoxarifado' : 'Em Operação';
-            let queryEq = supabaseClient.from('equipamentos').update({
-                patrimonio: dadosAtualizados.codigo,
-                classe: dadosAtualizados.categoria,
-                fabricante: dadosAtualizados.marca,
-                modelo: dadosAtualizados.modelo,
-                num_serie: dadosAtualizados.sn,
-                codigo_local: dadosAtualizados.local,
-                status: statusEquip
-            });
+            const codLocalEq = isLocalAlmoxarifado(dadosAtualizados.local) ? '10321007' : dadosAtualizados.local;
 
-            if (itemAtual && itemAtual.sn && itemAtual.sn !== 'S/N' && itemAtual.sn !== 'SN') {
-                queryEq = queryEq.eq('num_serie', itemAtual.sn);
+            if (dadosAtualizados.sn && dadosAtualizados.sn !== 'S/N' && dadosAtualizados.sn !== 'SN') {
+                const { data: existente } = await supabaseClient
+                    .from('equipamentos')
+                    .select('id')
+                    .eq('num_serie', dadosAtualizados.sn)
+                    .maybeSingle();
+
+                if (existente) {
+                    await supabaseClient.from('equipamentos').update({
+                        patrimonio: dadosAtualizados.codigo,
+                        classe: dadosAtualizados.categoria,
+                        fabricante: dadosAtualizados.marca,
+                        modelo: dadosAtualizados.modelo,
+                        codigo_local: codLocalEq,
+                        status: statusEquip
+                    }).eq('num_serie', dadosAtualizados.sn);
+                } else {
+                    await supabaseClient.from('equipamentos').insert([{
+                        patrimonio: dadosAtualizados.codigo,
+                        classe: dadosAtualizados.categoria,
+                        fabricante: dadosAtualizados.marca,
+                        modelo: dadosAtualizados.modelo,
+                        num_serie: dadosAtualizados.sn,
+                        codigo_local: codLocalEq,
+                        status: statusEquip
+                    }]);
+                }
             } else {
-                queryEq = queryEq.eq('patrimonio', itemAtual ? itemAtual.codigo : dadosAtualizados.codigo);
-            }
+                let queryEq = supabaseClient.from('equipamentos').update({
+                    patrimonio: dadosAtualizados.codigo,
+                    classe: dadosAtualizados.categoria,
+                    fabricante: dadosAtualizados.marca,
+                    modelo: dadosAtualizados.modelo,
+                    num_serie: dadosAtualizados.sn,
+                    codigo_local: codLocalEq,
+                    status: statusEquip
+                }).eq('patrimonio', itemAtual ? itemAtual.codigo : dadosAtualizados.codigo);
 
-            await queryEq;
-        } catch (e) {}
+                await queryEq;
+            }
+        } catch (e) {
+            console.warn("Sincronização em equipamentos:", e);
+        }
 
         fecharModal();
 
@@ -720,12 +747,21 @@ async function removerItemDoInventario(idItem) {
         try {
             if (!supabaseClient) throw new Error("Supabase não disponível");
 
+            const item = inventario.find(i => String(i.id) === String(idItem));
+
             const { error } = await supabaseClient
                 .from('inventario')
                 .delete()
                 .eq('id', idItem);
 
             if (error) throw error;
+
+            // Remove também da tabela equipamentos se houver num_serie correspondente
+            if (item && item.sn && item.sn !== 'S/N' && item.sn !== 'SN') {
+                try {
+                    await supabaseClient.from('equipamentos').delete().eq('num_serie', item.sn);
+                } catch (e) {}
+            }
 
             alert("Item removido com sucesso!");
             await carregarDadosDoBanco();

@@ -1197,11 +1197,46 @@
       try {
         if (!_supabase) throw new Error("Supabase não conectado");
 
-        if (origem === 'Inventário A&V' || idItem.startsWith('inv_')) {
-          const numId = idItem.replace('inv_', '');
-          // Preserva '01.03.21.007' no inventário se estiver no almoxarifado para manter total compatibilidade com o inventário
-          const localParaInventario = isLocalAlmoxarifado(novoLocalInput) ? '01.03.21.007' : localParaSupabase;
-          const { error } = await _supabase
+        const destinoEhAlmoxarifado = isLocalAlmoxarifado(novoLocalInput) || isLocalAlmoxarifado(localParaSupabase);
+        const localAlmoxPadrao = '01.03.21.007';
+        const localFinalInventario = destinoEhAlmoxarifado ? localAlmoxPadrao : localParaSupabase;
+        const statusFinalEquip = destinoEhAlmoxarifado ? 'Em Almoxarifado' : dadosAtualizados.status;
+
+        // 1. Sincronização inteligente com a tabela 'inventario' (Inventário A&V 183)
+        let idInventarioExistente = null;
+        if (idItem.startsWith('inv_')) {
+          idInventarioExistente = idItem.replace('inv_', '');
+        } else {
+          // Verifica se já existe registro correspondente em 'inventario' pelo Nº de Série ou Código
+          if (dadosAtualizados.sn && dadosAtualizados.sn !== 'S/N' && dadosAtualizados.sn !== 'SN' && dadosAtualizados.sn !== '-') {
+            const { data: invPorSn } = await _supabase
+              .from('inventario')
+              .select('id')
+              .eq('sn', dadosAtualizados.sn)
+              .maybeSingle();
+            if (invPorSn) idInventarioExistente = invPorSn.id;
+          }
+          if (!idInventarioExistente && itemAtual && itemAtual.raw_num_serie && itemAtual.raw_num_serie !== 'S/N' && itemAtual.raw_num_serie !== 'SN') {
+            const { data: invPorRawSn } = await _supabase
+              .from('inventario')
+              .select('id')
+              .eq('sn', itemAtual.raw_num_serie)
+              .maybeSingle();
+            if (invPorRawSn) idInventarioExistente = invPorRawSn.id;
+          }
+          if (!idInventarioExistente && dadosAtualizados.codigo && dadosAtualizados.codigo !== 'S/N') {
+            const { data: invPorCod } = await _supabase
+              .from('inventario')
+              .select('id')
+              .eq('codigo', dadosAtualizados.codigo)
+              .maybeSingle();
+            if (invPorCod) idInventarioExistente = invPorCod.id;
+          }
+        }
+
+        if (idInventarioExistente) {
+          // Atualiza o registro existente no inventário (seja para Almoxarifado ou para outro setor)
+          const { error: errInvUpdate } = await _supabase
             .from('inventario')
             .update({
               categoria: dadosAtualizados.categoria,
@@ -1209,51 +1244,57 @@
               marca: dadosAtualizados.marca,
               modelo: dadosAtualizados.modelo,
               sn: dadosAtualizados.sn,
-              local: localParaInventario,
+              local: localFinalInventario,
               observacoes: dadosAtualizados.observacoes
             })
-            .eq('id', numId);
+            .eq('id', idInventarioExistente);
 
-          if (error) throw error;
+          if (errInvUpdate) throw errInvUpdate;
+        } else if (destinoEhAlmoxarifado) {
+          // O item veio de outro setor do Santuário e está sendo transferido para o Almoxarifado:
+          // Cadastra automaticamente na tabela 'inventario' para aparecer no Inventário 183!
+          const { error: errInvInsert } = await _supabase
+            .from('inventario')
+            .insert([{
+              categoria: dadosAtualizados.categoria || 'Outros',
+              codigo: dadosAtualizados.codigo,
+              marca: dadosAtualizados.marca || '-',
+              modelo: dadosAtualizados.modelo || '-',
+              sn: dadosAtualizados.sn || 'S/N',
+              quantidade: 1,
+              local: localAlmoxPadrao,
+              observacoes: dadosAtualizados.observacoes || (itemAtual ? itemAtual.observacoes : '') || '',
+              foto: itemAtual ? itemAtual.foto : null
+            }]);
 
-          // Sincroniza também na tabela equipamentos se houver num_serie correspondente
-          if (dadosAtualizados.sn && dadosAtualizados.sn !== 'S/N' && dadosAtualizados.sn !== 'SN') {
-            try {
-              await _supabase.from('equipamentos').update({
-                classe: dadosAtualizados.categoria,
-                patrimonio: dadosAtualizados.codigo,
-                fabricante: dadosAtualizados.marca,
-                modelo: dadosAtualizados.modelo,
-                codigo_local: localParaSupabase,
-                status: dadosAtualizados.status
-              }).eq('num_serie', itemAtual?.raw_num_serie || dadosAtualizados.sn);
-            } catch (eSync) {
-              console.warn("Sync equipamentos secundário:", eSync);
-            }
-          }
+          if (errInvInsert) throw errInvInsert;
+        }
+
+        // 2. Sincronização com a tabela 'equipamentos' (Analytics)
+        const codLocalEquip = destinoEhAlmoxarifado ? CODIGO_ALMOX_SUPABASE : localParaSupabase;
+        let queryEq = _supabase
+          .from('equipamentos')
+          .update({
+            classe: dadosAtualizados.categoria,
+            patrimonio: dadosAtualizados.codigo,
+            fabricante: dadosAtualizados.marca,
+            modelo: dadosAtualizados.modelo,
+            num_serie: dadosAtualizados.sn,
+            codigo_local: codLocalEquip,
+            status: statusFinalEquip
+          });
+
+        if (itemAtual && itemAtual.raw_num_serie && itemAtual.raw_num_serie !== 'S/N' && itemAtual.raw_num_serie !== 'SN') {
+          queryEq = queryEq.eq('num_serie', itemAtual.raw_num_serie);
+        } else if (dadosAtualizados.sn && dadosAtualizados.sn !== 'S/N' && dadosAtualizados.sn !== 'SN') {
+          queryEq = queryEq.eq('num_serie', dadosAtualizados.sn);
         } else {
-          // Atualiza em equipamentos diferenciando principalmente pelo Número de Série (SN)
-          let query = _supabase
-            .from('equipamentos')
-            .update({
-              classe: dadosAtualizados.categoria,
-              patrimonio: dadosAtualizados.codigo,
-              fabricante: dadosAtualizados.marca,
-              modelo: dadosAtualizados.modelo,
-              num_serie: dadosAtualizados.sn,
-              codigo_local: localParaSupabase,
-              status: dadosAtualizados.status
-            });
+          queryEq = queryEq.eq('patrimonio', itemAtual ? (itemAtual.raw_patrimonio || itemAtual.codigo_completo || itemAtual.patrimonio) : dadosAtualizados.codigo);
+        }
 
-          // Se tiver número de série, localiza o aparelho físico pelo Nº de Série
-          if (itemAtual && itemAtual.raw_num_serie && itemAtual.raw_num_serie !== 'S/N' && itemAtual.raw_num_serie !== 'SN') {
-            query = query.eq('num_serie', itemAtual.raw_num_serie);
-          } else {
-            query = query.eq('patrimonio', itemAtual ? (itemAtual.raw_patrimonio || itemAtual.codigo_completo || itemAtual.patrimonio) : dadosAtualizados.codigo);
-          }
-
-          const { error } = await query;
-          if (error) throw error;
+        const { error: errEq } = await queryEq;
+        if (errEq) {
+          console.warn("Aviso ao atualizar equipamentos:", errEq);
         }
 
         fecharModalEdicao();
@@ -1294,24 +1335,27 @@
       try {
         if (!_supabase) throw new Error("Supabase não disponível");
 
+        // 1. Remove da tabela 'inventario' se existir
         if (item.id.startsWith('inv_')) {
           const numId = item.id.replace('inv_', '');
-          const { error } = await _supabase
-            .from('inventario')
-            .delete()
-            .eq('id', numId);
-
-          if (error) throw error;
-        } else {
-          let query = _supabase.from('equipamentos').delete();
-          if (item.raw_num_serie && item.raw_num_serie !== 'S/N' && item.raw_num_serie !== 'SN') {
-            query = query.eq('num_serie', item.raw_num_serie);
-          } else {
-            query = query.eq('patrimonio', item.raw_patrimonio || item.codigo_completo || item.patrimonio);
-          }
-          const { error } = await query;
-          if (error) throw error;
+          await _supabase.from('inventario').delete().eq('id', numId);
+        } else if (item.num_serie && item.num_serie !== 'S/N' && item.num_serie !== 'SN') {
+          await _supabase.from('inventario').delete().eq('sn', item.num_serie);
+        } else if (item.codigo_completo) {
+          await _supabase.from('inventario').delete().eq('codigo', item.codigo_completo);
         }
+
+        // 2. Remove da tabela 'equipamentos'
+        let query = _supabase.from('equipamentos').delete();
+        if (item.raw_num_serie && item.raw_num_serie !== 'S/N' && item.raw_num_serie !== 'SN') {
+          query = query.eq('num_serie', item.raw_num_serie);
+        } else if (item.num_serie && item.num_serie !== 'S/N' && item.num_serie !== 'SN') {
+          query = query.eq('num_serie', item.num_serie);
+        } else {
+          query = query.eq('patrimonio', item.raw_patrimonio || item.codigo_completo || item.patrimonio);
+        }
+        const { error } = await query;
+        if (error) throw error;
 
         alert("🗑️ Equipamento excluído com sucesso!");
         await inicializarEBuscarDados();

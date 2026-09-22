@@ -199,6 +199,10 @@ window.SupabaseSync = {
 
   async pullFromCloud() {
     if (this.isSaving) return;
+    if (this.hasLocalChanges) {
+      console.log("☁️ SupabaseSync: Ignorando pull da nuvem pois existem alterações locais pendentes de envio.");
+      return;
+    }
     this.isPulling = true;
     this.updateBadgeStatus('syncing');
 
@@ -257,6 +261,10 @@ window.SupabaseSync = {
   },
 
   async pushToCloud(immediate = false) {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
     if (this.isSaving) return;
     this.isSaving = true;
     this.updateBadgeStatus('saving');
