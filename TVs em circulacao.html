@@ -97,6 +97,35 @@
     .btn-back { background: white; color: var(--secondary); border: 1px solid var(--border); padding: 9px 16px; border-radius: 8px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; }
     .btn-back:hover { background: #f1f5f9; border-color: #cbd5e1; }
 
+    /* Barra de Busca Rápida (Idêntica ao Inventário 183) */
+    .search-filter-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      max-width: 650px;
+    }
+    .search-box i { color: var(--text-muted); width: 18px; height: 18px; }
+    .search-box input {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      background: transparent;
+    }
+
     /* Tabela Estilo Card */
     .table-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; flex: 1; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
     .table-container { overflow: auto; flex: 1; }
@@ -189,6 +218,18 @@
       <a href="TVs em circulacao.html" class="tv-tab-btn active"><i data-lucide="activity"></i> TVs em Circulação</a>
       <a href="TVs em estoque.html" class="tv-tab-btn"><i data-lucide="archive"></i> TVs em Estoque</a>
       <a href="Tvs novas.html" class="tv-tab-btn"><i data-lucide="sparkles"></i> TVs Novas</a>
+      <a href="TVs instaladas.html" class="tv-tab-btn"><i data-lucide="tv"></i> TVs Instaladas</a>
+    </div>
+
+    <!-- Barra de Busca Rápida (Idêntica ao Inventário 183) -->
+    <div class="search-filter-card">
+      <div class="search-box">
+        <i data-lucide="search"></i>
+        <input type="text" id="buscaRapida" placeholder="Pesquisar por Código, Marca, Modelo, Nº Série, Local ou Observação..." oninput="executarBusca()">
+      </div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+        <span id="contadorItens">Carregando...</span>
+      </div>
     </div>
 
     <!-- Tabela -->
@@ -274,6 +315,17 @@
     const ARQUIVOS_POSSIVEIS = ['tvs_em_circulação.xlsx', 'tvs_em_circulacao.xlsx', encodeURIComponent('tvs_em_circulação.xlsx')]; 
     const STORAGE_KEY = 'db_tvs_circulacao';
     let dadosPlanilha = [];
+    let termoBusca = '';
+
+    function normalizarTexto(txt) {
+      if (!txt) return '';
+      return String(txt).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    }
+
+    function executarBusca() {
+      termoBusca = normalizarTexto(document.getElementById('buscaRapida')?.value || '');
+      renderizarTabela(dadosPlanilha);
+    }
 
     function salvarStorage() {
       try {
@@ -424,6 +476,8 @@
       thead.innerHTML = trHead;
 
       const idxSituacao = getColIdx(cabecalhos, ['situac', 'status'], 8);
+      let linhasExibidas = 0;
+      let totalValidos = 0;
 
       // Linhas
       for (let i = 1; i < dados.length; i++) {
@@ -431,6 +485,18 @@
         if (!linha || linha.length === 0 || linha.every(c => c === undefined || c === null || String(c).trim() === '')) {
           continue;
         }
+
+        totalValidos++;
+
+        // Filtro da busca rápida
+        if (termoBusca) {
+          const textoLinha = linha.map(c => normalizarTexto(c)).join(' ');
+          if (!textoLinha.includes(termoBusca)) {
+            continue;
+          }
+        }
+
+        linhasExibidas++;
 
         let trBody = '<tr>';
         for (let j = 0; j < cabecalhos.length; j++) {
@@ -483,6 +549,21 @@
 
         trBody += '</tr>';
         tbody.innerHTML += trBody;
+      }
+
+      if (linhasExibidas === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${cabecalhos.length + 1}" style="text-align: center; padding: 25px; color: var(--text-muted);">
+              Nenhum televisor encontrado com o termo pesquisado.
+            </td>
+          </tr>
+        `;
+      }
+
+      const elContador = document.getElementById('contadorItens');
+      if (elContador) {
+        elContador.innerText = `${linhasExibidas} listados de ${totalValidos} televisores`;
       }
 
       lucide.createIcons();

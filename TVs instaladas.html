@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TVs Instaladas - Almoxarifado 2.0</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Ícones Lucide -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <!-- SheetJS e html2pdf -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Controle de Sessão e Permissões -->
+  <script src="js/auth.js"></script>
+  <!-- Sincronização em Nuvem Supabase -->
+  <script src="js/supabase_sync.js"></script>
+
+  <style>
+    :root {
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --secondary: #1e293b;
+      --bg-main: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #334155;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --warning-bg: #fef3c7;
+      --warning-text: #d97706;
+      --success-bg: #dcfce7;
+      --success-text: #15803d;
+      --danger: #ef4444;
+      --danger-light: #fee2e2;
+      --info-bg: #dbeafe;
+      --info-text: #1e40af;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+    /* Menu Lateral */
+    aside.sidebar { width: 260px; background-color: var(--secondary); color: white; display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
+    .sidebar-brand { font-size: 1.1rem; font-weight: 700; margin-bottom: 25px; display: flex; align-items: center; gap: 10px; color: var(--primary); }
+    .sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1; }
+    .sidebar-menu li a { color: #94a3b8; text-decoration: none; padding: 10px 14px; border-radius: 8px; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 0.86rem; transition: all 0.2s; }
+    .sidebar-menu li a:hover { background-color: rgba(255, 255, 255, 0.06); color: white; }
+    .sidebar-menu li a.active { background-color: #334155; color: white; font-weight: 600; }
+    .sidebar-section-title { font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin: 12px 0 4px 14px; }
+
+    /* Conteúdo Principal */
+    .main-content { flex: 1; padding: 25px 30px; overflow-y: auto; height: 100vh; display: flex; flex-direction: column; gap: 16px; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .page-header h1 { font-size: 1.5rem; color: var(--secondary); font-weight: 800; display: flex; align-items: center; gap: 10px; }
+    .page-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 3px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+    /* Abas de Navegação entre Módulos de TVs */
+    .tv-nav-tabs {
+      display: flex;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .tv-tab-btn {
+      background: white;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      padding: 9px 18px;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.875rem;
+      border-radius: 8px;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tv-tab-btn:hover { background: #f1f5f9; color: var(--secondary); border-color: #cbd5e1; }
+    .tv-tab-btn.active { background: var(--secondary); color: white; border-color: var(--secondary); }
+
+    /* Botões */
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 9px 16px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: background 0.2s; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-back { background: white; color: var(--secondary); border: 1px solid var(--border); padding: 9px 16px; border-radius: 8px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; }
+    .btn-back:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+    .info-badge { font-size: 0.82rem; padding: 6px 12px; border-radius: 6px; background: #e2e8f0; color: #475569; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+    .info-badge.success { background: var(--success-bg); color: var(--success-text); }
+    .info-badge.error { background: var(--danger-light); color: #b91c1c; }
+
+    /* Grid de KPIs */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .kpi-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .kpi-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+    .kpi-value { font-size: 1.55rem; font-weight: 800; color: var(--secondary); }
+    .kpi-footer { font-size: 0.74rem; color: var(--text-muted); }
+
+    /* Barra de Busca Rápida (Idêntica ao Inventário 183) */
+    .search-filter-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      max-width: 650px;
+    }
+    .search-box i { color: var(--text-muted); width: 18px; height: 18px; }
+    .search-box input {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      background: transparent;
+    }
+
+    /* Tabela Estilo Card */
+    .table-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 18px; flex: 1; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+    .table-container { overflow: auto; flex: 1; width: 100%; }
+    
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { background: #f8fafc; color: var(--secondary); font-weight: 600; padding: 12px 14px; font-size: 0.82rem; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--border); white-space: nowrap; }
+    td { padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 0.84rem; vertical-align: middle; }
+    tr:hover { background-color: #f8fafc; }
+
+    .badge-tag { font-size: 0.75rem; font-weight: 600; padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; }
+    .badge-tag.loc { background: #e0f2fe; color: #0369a1; }
+    .badge-tag.proj { background: #ede9fe; color: #6d28d9; }
+    .badge-tag.status { background: #dcfce7; color: #15803d; }
+
+    /* Botões de Ação na Tabela */
+    .action-buttons { display: flex; gap: 6px; align-items: center; justify-content: center; }
+    .btn-action { background: none; border: none; cursor: pointer; padding: 6px 8px; border-radius: 6px; color: var(--text-muted); transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; }
+    .btn-action.edit:hover { background: #e0f2fe; color: #0284c7; }
+    .btn-action.delete:hover { background: var(--danger-light); color: var(--danger); }
+
+    /* Modais */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
+    .modal-overlay.active { display: flex; }
+    .modal-card { background: white; border-radius: 16px; width: 100%; max-width: 650px; padding: 26px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .modal-header h2 { font-size: 1.25rem; color: var(--secondary); font-weight: 700; }
+    .modal-close { background: transparent; border: none; font-size: 1.2rem; color: var(--text-muted); cursor: pointer; padding: 4px; }
+
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full-width { grid-column: span 2; }
+    .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--secondary); }
+    .form-group input, .form-group select { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem; outline: none; transition: border 0.2s; background: white; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+
+    .modal-footer { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+    .btn-submit { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: background 0.2s; }
+    .btn-submit:hover { background: var(--primary-dark); }
+    .btn-cancel { background: white; color: var(--secondary); border: 1px solid var(--border); padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+    .btn-cancel:hover { background: #f1f5f9; }
+  </style>
+</head>
+<body>
+
+  <!-- Menu Lateral -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <i data-lucide="box"></i>
+      <span>Almoxarifado 2.0</span>
+    </div>
+    <ul class="sidebar-menu">
+      <li><a href="index.html"><i data-lucide="layout-dashboard"></i> Dashboard Geral</a></li>
+      <div class="sidebar-section-title">Módulos de Áudio & Vídeo</div>
+      <li><a href="index183.html"><i data-lucide="layers"></i> Inventário A&V (183)</a></li>
+      <li><a href="analytics.html"><i data-lucide="bar-chart-3"></i> Sysman Analytics</a></li>
+      <div class="sidebar-section-title">Controles Operacionais</div>
+      <li><a href="agenda.html"><i data-lucide="calendar"></i> Agenda de Eventos</a></li>
+      <li><a href="manutencao.html"><i data-lucide="wrench"></i> Manutenção Externa</a></li>
+      <li><a href="material de estudo.html"><i data-lucide="clipboard-list"></i> Listas de Estudos</a></li>
+      <li><a href="TVs em circulacao.html" class="active"><i data-lucide="tv"></i> Controle de TVs</a></li>
+      <li><a href="historico operacao.html"><i data-lucide="send"></i> Lançamentos Operação</a></li>
+      <li><a href="historico notebooks.html"><i data-lucide="monitor"></i> Lançamentos Notebooks</a></li>
+      <li><a href="insumos.html"><i data-lucide="package-search"></i> Controle de Insumos</a></li>
+    </ul>
+
+    <div style="margin-top: auto; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;">
+      <span id="responsavelNome" style="font-size: 0.75rem; color: #94a3b8;">Operador / A&V</span>
+      <button id="btnSair" onclick="fazerLogout()" title="Sair" style="background: none; border: none; color: #f87171; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 0.75rem;">
+        <i data-lucide="log-out" style="width: 14px; height: 14px;"></i> Sair
+      </button>
+    </div>
+  </aside>
+
+  <!-- Conteúdo Principal -->
+  <main class="main-content">
+    
+    <!-- Topo da Página -->
+    <div class="page-header">
+      <div>
+        <h1><i data-lucide="tv" style="color: var(--primary);"></i> TVs Instaladas</h1>
+        <p>Monitoramento e transferência de televisores instalados nos setores do Santuário Nacional</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-primary" onclick="abrirModalNovaTv()"><i data-lucide="plus"></i> Nova TV Instalada</button>
+        <button class="btn-back" onclick="gerarRelatorioPDF()"><i data-lucide="file-text"></i> Baixar PDF</button>
+        <div id="statusInfo" class="info-badge success"><i data-lucide="cloud"></i> Conectado</div>
+        <a href="index.html" class="btn-back"><i data-lucide="arrow-left"></i> Voltar</a>
+      </div>
+    </div>
+
+    <!-- Navegação de Abas do Módulo de TVs -->
+    <div class="tv-nav-tabs">
+      <a href="TVs em circulacao.html" class="tv-tab-btn"><i data-lucide="activity"></i> TVs em Circulação</a>
+      <a href="TVs em estoque.html" class="tv-tab-btn"><i data-lucide="archive"></i> TVs em Estoque</a>
+      <a href="Tvs novas.html" class="tv-tab-btn"><i data-lucide="sparkles"></i> TVs Novas</a>
+      <a href="TVs instaladas.html" class="tv-tab-btn active"><i data-lucide="tv"></i> TVs Instaladas</a>
+    </div>
+
+    <!-- KPIs Rápidos -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span>TVs Instaladas</span>
+          <i data-lucide="tv" style="width: 16px; color: var(--primary);"></i>
+        </div>
+        <div class="kpi-value" id="kpiTotalInstaladas">0</div>
+        <div class="kpi-footer">Em operação no Santuário</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span>Setores Atendidos</span>
+          <i data-lucide="map-pin" style="width: 16px; color: #0284c7;"></i>
+        </div>
+        <div class="kpi-value" id="kpiTotalSetores">0</div>
+        <div class="kpi-footer">Salas e ambientes mapeados</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span>Principais Fabricantes</span>
+          <i data-lucide="tag" style="width: 16px; color: #7c3aed;"></i>
+        </div>
+        <div class="kpi-value" id="kpiMarcas" style="font-size: 1.15rem;">LG / Samsung</div>
+        <div class="kpi-footer">Smart TVs e Displays</div>
+      </div>
+    </div>
+
+    <!-- Barra de Busca Rápida (Idêntica ao Inventário 183) -->
+    <div class="search-filter-card">
+      <div class="search-box">
+        <i data-lucide="search"></i>
+        <input type="text" id="buscaRapida" placeholder="Pesquisar por Patrimônio, Marca, Modelo, Nº Série, Setor ou Local..." oninput="executarBusca()">
+      </div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+        <span id="contadorItens">Carregando televisores...</span>
+      </div>
+    </div>
+
+    <!-- Tabela Geral de TVs Instaladas -->
+    <div class="table-card">
+      <div class="table-container">
+        <table id="tblTvs">
+          <thead>
+            <tr>
+              <th>Patrimônio</th>
+              <th>Nº Patrimônio</th>
+              <th>Classe</th>
+              <th>Fabricante</th>
+              <th>Modelo</th>
+              <th>Nº Série</th>
+              <th>Cód. Local</th>
+              <th>Setor / Local Mapeado</th>
+              <th>Projeto</th>
+              <th>Status</th>
+              <th style="text-align: center; width: 110px;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="corpoTabela">
+            <tr>
+              <td colspan="11" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                Carregando televisores instalados...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL DE EDIÇÃO / TRANSFERÊNCIA -->
+  <div id="modalEditarTv" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modalTitulo">Editar / Transferir Televisor</h2>
+        <button class="modal-close" onclick="fecharModal()"><i data-lucide="x"></i></button>
+      </div>
+
+      <form id="formTv" onsubmit="event.preventDefault(); salvarEdicaoTv();">
+        <input type="hidden" id="edit-id">
+        <input type="hidden" id="edit-origem">
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="edit-patrimonio">Patrimônio</label>
+            <input type="text" id="edit-patrimonio" placeholder="Ex: TLV" value="TLV">
+          </div>
+          <div class="form-group">
+            <label for="edit-num-patrimonio">Nº Patrimônio</label>
+            <input type="text" id="edit-num-patrimonio" placeholder="Ex: 000123 ou deixe em branco">
+          </div>
+
+          <div class="form-group">
+            <label for="edit-marca">Fabricante / Marca</label>
+            <input type="text" id="edit-marca" placeholder="Ex: LG, Samsung, Sony..." required>
+          </div>
+          <div class="form-group">
+            <label for="edit-modelo">Modelo</label>
+            <input type="text" id="edit-modelo" placeholder="Ex: 55QNED73ASA, 50UA8550PSA..." required>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-sn">Nº Série (SN)</label>
+            <input type="text" id="edit-sn" placeholder="Ex: 604AZDBBP890 ou XX">
+          </div>
+          <div class="form-group">
+            <label for="edit-status">Status Operacional</label>
+            <select id="edit-status">
+              <option value="Em Operação">Em Operação</option>
+              <option value="Instalada">Instalada</option>
+              <option value="Em Manutenção">Em Manutenção</option>
+              <option value="Reserva">Reserva</option>
+              <option value="Em Almoxarifado">Em Almoxarifado (Devolver ao Estoque)</option>
+            </select>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="edit-local">Cód. Local / Destino da Transferência</label>
+            <input type="text" id="edit-local" placeholder="Ex: 21.05.07.009 (Sala Reuniões) ou 01.03.21.007 (Almoxarifado)" required>
+            <span style="font-size: 0.74rem; color: var(--text-muted); margin-top: 2px;">
+              💡 Dica: Para devolver a TV ao Almoxarifado Multimídia, use <b>01.03.21.007</b> ou <b>10321007</b>.
+            </span>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="edit-observacoes">Observações / Detalhes</label>
+            <input type="text" id="edit-observacoes" placeholder="Ex: Sala de Reunião 3, Smart TV, Suporte articulado...">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+          <button type="submit" class="btn-submit">Salvar TV</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://tocmqlsicxuxfkiptgaj.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvY21xbHNpY3h1eGZraXB0Z2FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTIyODEsImV4cCI6MjA5OTYyODI4MX0.B-UKh4qMQG02guuJhIlI-ZB0d4OjlByFyfOoGISiqMY"; 
+
+    let _supabase = null;
+    let listaTvsInstaladas = [];
+    let mapaLocais = {};
+
+    const CODIGOS_ALMOXARIFADO = ['183', '01.03.21.007', '0103.21.007', '10321007', '010321007', '01.03.21.7'];
+    const CODIGO_ALMOX_SUPABASE = '10321007';
+
+    function isLocalAlmoxarifado(codigoLocal) {
+      if (!codigoLocal) return false;
+      const cod = String(codigoLocal).trim();
+      const codNorm = cod.replace(/[.\s]/g, '').replace(/^0+/, '');
+      return CODIGOS_ALMOXARIFADO.some(c => {
+        const cNorm = c.replace(/[.\s]/g, '').replace(/^0+/, '');
+        return cod === c || codNorm === cNorm;
+      });
+    }
+
+    function normalizarParaSupabase(codigoLocal) {
+      if (!codigoLocal) return codigoLocal;
+      if (isLocalAlmoxarifado(codigoLocal)) return CODIGO_ALMOX_SUPABASE;
+      const semPontos = String(codigoLocal).trim().replace(/[.\s]/g, '');
+      return semPontos.replace(/^0+/, '') || semPontos;
+    }
+
+    function normalizarChaveLocal(codigo) {
+      if (!codigo) return '';
+      return String(codigo).trim().replace(/[.\s]/g, '').replace(/^0+/, '').toLowerCase();
+    }
+
+    function registrarLocalNoMapa(codigo, nome, projeto) {
+      if (!codigo) return;
+      const codStr = String(codigo).trim();
+      const nomeStr = String(nome || '').trim();
+      const projStr = String(projeto || '').trim() || 'Geral / Santuário';
+      const info = { codigo: codStr, nome: nomeStr, projeto: projStr };
+
+      mapaLocais[codStr] = info;
+      mapaLocais[codStr.toLowerCase()] = info;
+      const semPontos = codStr.replace(/[.\s]/g, '');
+      mapaLocais[semPontos] = info;
+      mapaLocais[semPontos.replace(/^0+/, '')] = info;
+      mapaLocais[normalizarChaveLocal(codStr)] = info;
+    }
+
+    function obterInfoLocal(codigo) {
+      if (!codigo) {
+        return { codigo: '10321007', nome: 'Almoxarifado Multimídia (183)', projeto: 'Proj.514' };
+      }
+      const codStr = String(codigo).trim();
+      if (isLocalAlmoxarifado(codStr)) {
+        return { codigo: '10321007', nome: 'Basílica - Galerias - Galeria Sul - Almoxarifado Multimídia', projeto: 'Proj.514' };
+      }
+      const chaves = [
+        codStr,
+        codStr.toLowerCase(),
+        codStr.replace(/[.\s]/g, ''),
+        codStr.replace(/[.\s]/g, '').replace(/^0+/, ''),
+        normalizarChaveLocal(codStr)
+      ];
+      for (let ch of chaves) {
+        if (mapaLocais[ch]) return mapaLocais[ch];
+      }
+      return { codigo: codStr, nome: `Local ${codStr}`, projeto: 'Geral / Santuário' };
+    }
+
+    async function carregarLocaisDaPlanilha() {
+      try {
+        if (typeof XLSX === 'undefined') return;
+        const res = await fetch('Locais_Santuario_atualizado.xlsx');
+        if (!res.ok) return;
+        const buffer = await res.arrayBuffer();
+        const wb = XLSX.read(buffer, { type: 'array' });
+        const sheetName = wb.SheetNames[0];
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
+
+        rows.forEach(r => {
+          const cod = r.CODIGO || r.Codigo || r.codigo || r.COD_LOCAL || r.codigo_local || '';
+          const nome = r.NOME_LOCAL || r.Nome_Local || r.nome_local || r.LOCAL || r.Local || '';
+          const proj = r.PROJETO || r.Projeto || r.projeto || '';
+          if (cod && nome) registrarLocalNoMapa(cod, nome, proj);
+        });
+      } catch (e) {
+        console.warn("Locais planilha fetch:", e);
+      }
+    }
+
+    function extrairPatrimonioENumero(rawCodigo) {
+      const cod = (rawCodigo || '').trim();
+      if (!cod) return { patrimonio: 'TLV', numPatrimonio: '-' };
+
+      if (cod.includes(' - ')) {
+        const partes = cod.split(' - ');
+        return { patrimonio: partes[0].trim() || 'TLV', numPatrimonio: partes.slice(1).join(' - ').trim() || '-' };
+      }
+      const matchHifen = cod.match(/^([A-Za-z]+)\s*-\s*([A-Za-z0-9\.\_\/:]+)$/);
+      if (matchHifen) return { patrimonio: matchHifen[1].toUpperCase(), numPatrimonio: matchHifen[2] };
+
+      const matchEspaco = cod.match(/^([A-Za-z]{2,5})\s+([0-9\.\_\/\-:]+)$/);
+      if (matchEspaco) return { patrimonio: matchEspaco[1].toUpperCase(), numPatrimonio: matchEspaco[2] };
+
+      if (/^[A-Za-z]{2,5}$/.test(cod)) return { patrimonio: cod.toUpperCase(), numPatrimonio: '-' };
+      if (/^[0-9]/.test(cod)) return { patrimonio: 'TLV', numPatrimonio: cod };
+
+      return { patrimonio: cod, numPatrimonio: '-' };
+    }
+
+    async function inicializarDados() {
+      const statusBox = document.getElementById('statusInfo');
+      if (statusBox) statusBox.innerHTML = `<i data-lucide="loader" style="width:14px; height:14px; animation: spin 1s linear infinite;"></i> Conectando...`;
+      if (window.lucide) lucide.createIcons();
+
+      try {
+        if (typeof window.supabase === 'undefined') throw new Error("Supabase não carregado");
+        _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 1. Locais
+        await carregarLocaisDaPlanilha();
+
+        registrarLocalNoMapa('01.03.21.007', 'Basílica - Galerias - Galeria Sul - Almoxarifado Multimídia', 'Proj.514');
+        registrarLocalNoMapa('10321007', 'Basílica - Galerias - Galeria Sul - Almoxarifado Multimídia', 'Proj.514');
+
+        const NOVOS_LOCAIS_CSA = [
+          { cod: '21.02.03', nome: 'CSA - Térreo - Recepção TV', proj: 'Proj. 1610' },
+          { cod: '21.05.07.001', nome: 'CSA - 2º Pavimento - TV - Direção', proj: 'Proj. 1846' },
+          { cod: '21.05.07.002', nome: 'CSA - 2º Pavimento - TV - Jornalismo', proj: 'Proj. 1846' },
+          { cod: '21.05.07.003', nome: 'CSA - 2º Pavimento - TV - Produção', proj: 'Proj. 1846' },
+          { cod: '21.05.07.004', nome: 'CSA - 2º Pavimento - TV - Sala ao lado da Produção', proj: 'Proj. 1846' },
+          { cod: '21.05.07.005', nome: 'CSA - 2º Pavimento - TV - Sala de Reuniões 1', proj: 'Proj. 1846' },
+          { cod: '21.05.07.006', nome: 'CSA - 2º Pavimento - TV - Copa', proj: 'Proj. 1610' },
+          { cod: '21.05.07.007', nome: 'CSA - 2º Pavimento - TV - Sanitário ao lado da Copa', proj: 'Proj. 1610' },
+          { cod: '21.05.07.008', nome: 'CSA - 2º Pavimento - TV - Sala de Reuniões 2', proj: 'Proj. 1846' },
+          { cod: '21.05.07.009', nome: 'CSA - 2º Pavimento - TV - Sala de Reuniões 3', proj: 'Proj. 1846' },
+          { cod: '21.05.07.010', nome: 'CSA - 2º Pavimento - TV - Depósito Tecnico', proj: 'Proj. 1846' },
+          { cod: '21.05.07.016', nome: 'CSA - 2º Pavimento - TV - Manutenção Técnica e TI', proj: 'Proj. 1846' }
+        ];
+        NOVOS_LOCAIS_CSA.forEach(l => registrarLocalNoMapa(l.cod, l.nome, l.proj));
+
+        // 2. Busca TVs de equipamentos
+        const { data: eqData } = await _supabase
+          .from('equipamentos')
+          .select('*')
+          .or('classe.ilike.*TV*,classe.ilike.*Televisor*,patrimonio.ilike.*TLV*');
+
+        // 3. Busca TVs de inventario
+        const { data: invData } = await _supabase
+          .from('inventario')
+          .select('*')
+          .or('categoria.ilike.*TV*,categoria.ilike.*Televisor*,codigo.ilike.*TLV*');
+
+        // 4. Cruza dados: queremos TVs que estão INSTALADAS / EM OPERAÇÃO (fora do almoxarifado ou com status instalado)
+        const unificadas = [];
+        const seriesProcessadas = new Set();
+
+        (invData || []).forEach(inv => {
+          const codLocal = inv.local ? String(inv.local).trim() : '';
+          const estaNoAlmox = isLocalAlmoxarifado(codLocal);
+          
+          // Se não estiver no almoxarifado, é uma TV que está em operação/instalada nos setores!
+          if (!estaNoAlmox) {
+            const patInfo = extrairPatrimonioENumero(inv.codigo);
+            const infoLoc = obterInfoLocal(codLocal);
+            const snVal = inv.sn || 'S/N';
+            if (snVal && snVal !== 'S/N' && snVal !== 'SN') seriesProcessadas.add(snVal.toUpperCase());
+
+            unificadas.push({
+              id: `inv_${inv.id}`,
+              patrimonio: patInfo.patrimonio || 'TLV',
+              num_patrimonio: patInfo.numPatrimonio || '-',
+              classe: inv.categoria || 'TVs',
+              fabricante: inv.marca || '-',
+              modelo: inv.modelo || '-',
+              num_serie: snVal,
+              codigo_local: infoLoc.codigo || codLocal,
+              setor_local: `${infoLoc.codigo || codLocal} - ${infoLoc.nome}`,
+              projeto: infoLoc.projeto || 'Geral / Santuário',
+              status: 'Em Operação',
+              observacoes: inv.observacoes || '',
+              origem: 'Inventário A&V'
+            });
+          }
+        });
+
+        (eqData || []).forEach((eq, idx) => {
+          const codLocal = eq.codigo_local ? String(eq.codigo_local).trim() : '';
+          const estaNoAlmox = isLocalAlmoxarifado(codLocal);
+          const st = (eq.status || '').toLowerCase();
+          const snVal = (eq.num_serie || '').trim();
+          const snUpper = snVal.toUpperCase();
+
+          if (seriesProcessadas.has(snUpper) && snUpper !== 'S/N' && snUpper !== 'SN' && snUpper !== '') {
+            return;
+          }
+
+          // Filtra TVs instaladas / em operação (não em almoxarifado)
+          if (!estaNoAlmox || st.includes('oper') || st.includes('instalad')) {
+            const patInfo = extrairPatrimonioENumero(eq.patrimonio);
+            const infoLoc = obterInfoLocal(codLocal);
+
+            unificadas.push({
+              id: `eq_${eq.id || idx}`,
+              raw_id: eq.id,
+              raw_patrimonio: eq.patrimonio,
+              raw_num_serie: eq.num_serie,
+              patrimonio: patInfo.patrimonio || 'TLV',
+              num_patrimonio: patInfo.numPatrimonio || '-',
+              classe: eq.classe || 'TVs',
+              fabricante: eq.fabricante || '-',
+              modelo: eq.modelo || '-',
+              num_serie: snVal || 'S/N',
+              codigo_local: infoLoc.codigo || codLocal,
+              setor_local: `${infoLoc.codigo || codLocal} - ${infoLoc.nome}`,
+              projeto: infoLoc.projeto || 'Geral / Santuário',
+              status: eq.status || 'Em Operação',
+              observacoes: eq.referencia || '',
+              origem: 'Equipamentos Santuário'
+            });
+          }
+        });
+
+        listaTvsInstaladas = unificadas;
+
+        if (statusBox) {
+          statusBox.className = "info-badge success";
+          statusBox.innerHTML = `<i data-lucide="cloud"></i> Nuvem: ${listaTvsInstaladas.length} TVs instaladas`;
+        }
+
+        atualizarKPIs();
+        renderizarTabela();
+
+      } catch (err) {
+        console.error("Erro ao inicializar TVs instaladas:", err);
+        if (statusBox) {
+          statusBox.className = "info-badge error";
+          statusBox.innerHTML = `<i data-lucide="alert-circle"></i> Erro ao carregar dados`;
+        }
+      }
+    }
+
+    function atualizarKPIs() {
+      const elTotal = document.getElementById('kpiTotalInstaladas');
+      const elSetores = document.getElementById('kpiTotalSetores');
+      const elMarcas = document.getElementById('kpiMarcas');
+
+      if (elTotal) elTotal.innerText = listaTvsInstaladas.length;
+
+      const setoresUnicos = new Set(listaTvsInstaladas.map(t => t.setor_local)).size;
+      if (elSetores) elSetores.innerText = setoresUnicos;
+
+      const marcas = {};
+      listaTvsInstaladas.forEach(t => {
+        const m = (t.fabricante || 'Outras').toUpperCase().trim();
+        if (m && m !== '-') marcas[m] = (marcas[m] || 0) + 1;
+      });
+      const topMarcas = Object.keys(marcas).sort((a,b) => marcas[b] - marcas[a]).slice(0, 2);
+      if (elMarcas && topMarcas.length > 0) {
+        elMarcas.innerText = topMarcas.join(' / ');
+      }
+    }
+
+    function executarBusca() {
+      renderizarTabela();
+    }
+
+    function renderizarTabela() {
+      const tbody = document.getElementById('corpoTabela');
+      const contador = document.getElementById('contadorItens');
+      const busca = (document.getElementById('buscaRapida')?.value || '').toLowerCase().trim();
+
+      if (!tbody) return;
+
+      const filtradas = listaTvsInstaladas.filter(tv => {
+        if (!busca) return true;
+        const texto = `${tv.patrimonio} ${tv.num_patrimonio} ${tv.classe} ${tv.fabricante} ${tv.modelo} ${tv.num_serie} ${tv.codigo_local} ${tv.setor_local} ${tv.projeto} ${tv.status} ${tv.observacoes}`.toLowerCase();
+        return texto.includes(busca);
+      });
+
+      if (contador) {
+        contador.innerText = `${filtradas.length} listados de ${listaTvsInstaladas.length} TVs instaladas`;
+      }
+
+      if (filtradas.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 30px; color: var(--text-muted);">Nenhum televisor localizado com os termos pesquisados.</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      filtradas.forEach(tv => {
+        const botoesAcao = `
+          <div class="action-buttons">
+            <button class="btn-action edit" onclick="abrirModalEdicao('${tv.id}')" title="Editar / Transferir TV"><i data-lucide="edit-3" style="width:14px; height:14px;"></i></button>
+            <button class="btn-action delete" onclick="excluirTv('${tv.id}')" title="Excluir"><i data-lucide="trash-2" style="width:14px; height:14px;"></i></button>
+          </div>
+        `;
+
+        html += `
+          <tr>
+            <td><strong style="color: var(--secondary);">${tv.patrimonio}</strong></td>
+            <td><strong style="color: #0284c7;">${tv.num_patrimonio || '-'}</strong></td>
+            <td><span class="badge-tag" style="background:#e2e8f0; color:#334155;">${tv.classe}</span></td>
+            <td>${tv.fabricante}</td>
+            <td><b>${tv.modelo}</b></td>
+            <td><code style="font-size: 0.78rem; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${tv.num_serie}</code></td>
+            <td><span class="badge-tag loc">📍 ${tv.codigo_local}</span></td>
+            <td>${tv.setor_local}</td>
+            <td><span class="badge-tag proj">${tv.projeto}</span></td>
+            <td><span class="badge-tag status" style="background:#dcfce7; color:#15803d; font-weight:700;">${tv.status}</span></td>
+            <td>${botoesAcao}</td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function abrirModalNovaTv() {
+      document.getElementById('edit-id').value = '';
+      document.getElementById('edit-origem').value = 'novo';
+      document.getElementById('modalTitulo').innerText = "Cadastrar TV Instalada";
+      document.getElementById('edit-patrimonio').value = "TLV";
+      document.getElementById('edit-num-patrimonio').value = "";
+      document.getElementById('edit-marca').value = "";
+      document.getElementById('edit-modelo').value = "";
+      document.getElementById('edit-sn').value = "";
+      document.getElementById('edit-local').value = "";
+      document.getElementById('edit-status').value = "Em Operação";
+      document.getElementById('edit-observacoes').value = "";
+
+      document.getElementById('modalEditarTv').classList.add('active');
+    }
+
+    function abrirModalEdicao(idTv) {
+      const tv = listaTvsInstaladas.find(t => String(t.id) === String(idTv));
+      if (!tv) {
+        alert("Televisor não encontrado.");
+        return;
+      }
+
+      document.getElementById('edit-id').value = tv.id;
+      document.getElementById('edit-origem').value = tv.origem || 'Equipamentos Santuário';
+      document.getElementById('modalTitulo').innerText = "Editar / Transferir Televisor";
+
+      document.getElementById('edit-patrimonio').value = tv.patrimonio || 'TLV';
+      document.getElementById('edit-num-patrimonio').value = (tv.num_patrimonio && tv.num_patrimonio !== '-') ? tv.num_patrimonio : '';
+      document.getElementById('edit-marca').value = tv.fabricante || '';
+      document.getElementById('edit-modelo').value = tv.modelo || '';
+      document.getElementById('edit-sn').value = (tv.num_serie && tv.num_serie !== 'S/N') ? tv.num_serie : '';
+      document.getElementById('edit-local').value = tv.codigo_local || '';
+      document.getElementById('edit-status').value = tv.status || 'Em Operação';
+      document.getElementById('edit-observacoes').value = tv.observacoes || '';
+
+      document.getElementById('modalEditarTv').classList.add('active');
+    }
+
+    function fecharModal() {
+      document.getElementById('modalEditarTv').classList.remove('active');
+    }
+
+    async function salvarEdicaoTv() {
+      const idTv = document.getElementById('edit-id').value;
+      const origem = document.getElementById('edit-origem').value;
+
+      const tvAtual = listaTvsInstaladas.find(t => String(t.id) === String(idTv));
+      const novoLocalInput = document.getElementById('edit-local').value.trim();
+      const localParaSupabase = normalizarParaSupabase(novoLocalInput);
+      const destinoEhAlmoxarifado = isLocalAlmoxarifado(novoLocalInput) || isLocalAlmoxarifado(localParaSupabase);
+
+      const prefPat = document.getElementById('edit-patrimonio').value.trim() || 'TLV';
+      const numPat = document.getElementById('edit-num-patrimonio').value.trim();
+      let codigoCompleto = '';
+      if (prefPat && numPat && numPat !== '-') {
+        codigoCompleto = numPat.toUpperCase().startsWith(prefPat.toUpperCase()) ? numPat : `${prefPat} - ${numPat}`;
+      } else {
+        codigoCompleto = (numPat && numPat !== '-') ? numPat : prefPat;
+      }
+
+      const marca = document.getElementById('edit-marca').value.trim();
+      const modelo = document.getElementById('edit-modelo').value.trim();
+      const sn = document.getElementById('edit-sn').value.trim() || 'S/N';
+      const statusInput = document.getElementById('edit-status').value;
+      const statusFinal = destinoEhAlmoxarifado ? 'Em Almoxarifado' : statusInput;
+      const obs = document.getElementById('edit-observacoes').value.trim();
+
+      try {
+        if (!_supabase) throw new Error("Supabase não disponível");
+
+        // 1. Sincroniza em 'inventario'
+        let idInv = null;
+        if (idTv && idTv.startsWith('inv_')) {
+          idInv = idTv.replace('inv_', '');
+        } else if (sn && sn !== 'S/N' && sn !== 'SN') {
+          const { data: porSn } = await _supabase.from('inventario').select('id').eq('sn', sn).maybeSingle();
+          if (porSn) idInv = porSn.id;
+        }
+
+        if (idInv) {
+          await _supabase.from('inventario').update({
+            codigo: codigoCompleto,
+            marca: marca,
+            modelo: modelo,
+            sn: sn,
+            local: destinoEhAlmoxarifado ? '01.03.21.007' : localParaSupabase,
+            observacoes: obs
+          }).eq('id', idInv);
+        } else if (destinoEhAlmoxarifado) {
+          // Entrou no almoxarifado: cadastra no inventário se não existia
+          await _supabase.from('inventario').insert([{
+            categoria: 'Televisores',
+            codigo: codigoCompleto,
+            marca: marca,
+            modelo: modelo,
+            sn: sn,
+            quantidade: 1,
+            local: '01.03.21.007',
+            observacoes: obs,
+            foto: null
+          }]);
+        }
+
+        // 2. Sincroniza em 'equipamentos'
+        const codLocalEq = destinoEhAlmoxarifado ? CODIGO_ALMOX_SUPABASE : localParaSupabase;
+
+        if (origem === 'novo') {
+          await _supabase.from('equipamentos').insert([{
+            patrimonio: codigoCompleto,
+            classe: 'TVs',
+            fabricante: marca,
+            modelo: modelo,
+            num_serie: sn,
+            codigo_local: codLocalEq,
+            status: statusFinal,
+            referencia: obs
+          }]);
+        } else {
+          let queryEq = _supabase.from('equipamentos').update({
+            patrimonio: codigoCompleto,
+            classe: 'TVs',
+            fabricante: marca,
+            modelo: modelo,
+            num_serie: sn,
+            codigo_local: codLocalEq,
+            status: statusFinal,
+            referencia: obs
+          });
+
+          if (tvAtual && tvAtual.raw_num_serie && tvAtual.raw_num_serie !== 'S/N' && tvAtual.raw_num_serie !== 'SN') {
+            queryEq = queryEq.eq('num_serie', tvAtual.raw_num_serie);
+          } else if (sn && sn !== 'S/N' && sn !== 'SN') {
+            queryEq = queryEq.eq('num_serie', sn);
+          } else if (tvAtual && tvAtual.raw_id) {
+            queryEq = queryEq.eq('id', tvAtual.raw_id);
+          } else {
+            queryEq = queryEq.eq('patrimonio', tvAtual ? tvAtual.raw_patrimonio : codigoCompleto);
+          }
+
+          await queryEq;
+        }
+
+        fecharModal();
+        if (destinoEhAlmoxarifado) {
+          alert(`✅ TV transferida para o Almoxarifado Multimídia com sucesso!\nEla foi movida para o estoque e já consta no Inventário A&V (183).`);
+        } else {
+          alert('✅ Dados do televisor atualizados com sucesso!');
+        }
+
+        await inicializarDados();
+
+      } catch (err) {
+        console.error("Erro ao salvar TV:", err);
+        alert("Erro ao salvar: " + (err.message || err));
+      }
+    }
+
+    async function excluirTv(idTv) {
+      const tv = listaTvsInstaladas.find(t => String(t.id) === String(idTv));
+      if (!tv) return;
+
+      if (!confirm(`Deseja realmente excluir a TV "${tv.fabricante} ${tv.modelo}" (SN: ${tv.num_serie})?`)) return;
+
+      try {
+        if (!_supabase) throw new Error("Supabase não disponível");
+
+        if (tv.id.startsWith('inv_')) {
+          await _supabase.from('inventario').delete().eq('id', tv.id.replace('inv_', ''));
+        } else if (tv.num_serie && tv.num_serie !== 'S/N' && tv.num_serie !== 'SN') {
+          await _supabase.from('inventario').delete().eq('sn', tv.num_serie);
+        }
+
+        let query = _supabase.from('equipamentos').delete();
+        if (tv.raw_num_serie && tv.raw_num_serie !== 'S/N' && tv.raw_num_serie !== 'SN') {
+          query = query.eq('num_serie', tv.raw_num_serie);
+        } else if (tv.raw_id) {
+          query = query.eq('id', tv.raw_id);
+        } else {
+          query = query.eq('patrimonio', tv.raw_patrimonio || tv.patrimonio);
+        }
+        await query;
+
+        alert("🗑️ Televisor excluído com sucesso!");
+        await inicializarDados();
+
+      } catch (err) {
+        console.error("Erro ao excluir TV:", err);
+        alert("Erro ao excluir: " + (err.message || err));
+      }
+    }
+
+    function gerarRelatorioPDF() {
+      const dataAtual = new Date().toLocaleDateString('pt-BR');
+      const tabelaOriginal = document.querySelector("#tblTvs");
+      if (!tabelaOriginal) return;
+
+      const relatorio = document.createElement("div");
+      relatorio.style.padding = "16px";
+      relatorio.style.fontFamily = "'Inter', Arial, sans-serif";
+
+      relatorio.innerHTML = `
+        <div style="text-align: center; border-bottom: 2px solid #10b981; padding-bottom: 12px; margin-bottom: 18px;">
+          <h1 style="margin: 0; color: #1e293b; font-size: 18px; font-weight: 800;">Almoxarifado 2.0 - Relatório de TVs Instaladas</h1>
+          <p style="margin: 4px 0 0 0; color: #64748b; font-size: 11px;">
+            Gerado em: <b>${dataAtual}</b> | Total Instaladas: <b>${listaTvsInstaladas.length}</b>
+          </p>
+        </div>
+        ${tabelaOriginal.outerHTML}
+      `;
+
+      relatorio.querySelectorAll(".action-buttons, th:last-child, td:last-child").forEach(el => el.remove());
+
+      const opcoes = {
+        margin: [8, 8, 8, 8],
+        filename: `TVs_Instaladas_${dataAtual.replace(/\//g, '-')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
+
+      if (typeof html2pdf !== 'undefined') html2pdf().set(opcoes).from(relatorio).save();
+    }
+
+    function fazerLogout() {
+      if (confirm("Deseja realmente sair?")) {
+        sessionStorage.clear();
+        localStorage.removeItem('usuario_logado');
+        window.location.href = 'index.html';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      inicializarDados();
+      if (window.lucide) lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
+

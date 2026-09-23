@@ -13,6 +13,8 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <!-- Biblioteca SheetJS para ler Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Controle de Sessão e Permissões -->
   <script src="js/auth.js"></script>
   <!-- Sincronização em Nuvem Supabase -->
@@ -50,19 +52,19 @@
     .sidebar-menu li a.active { background-color: #334155; color: white; }
 
     /* Conteúdo Principal */
-    .main-content { flex: 1; padding: 30px; overflow-y: auto; height: 100vh; display: flex; flex-direction: column; }
-    .page-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-    .page-header h1 { font-size: 1.5rem; color: var(--secondary); font-weight: 700; }
-    .page-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 4px; }
-    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .main-content { flex: 1; padding: 25px 30px; overflow-y: auto; height: 100vh; display: flex; flex-direction: column; gap: 16px; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .page-header h1 { font-size: 1.5rem; color: var(--secondary); font-weight: 800; display: flex; align-items: center; gap: 10px; }
+    .page-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 3px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
     /* Abas de Navegação entre Módulos de TVs */
     .tv-nav-tabs {
       display: flex;
       gap: 10px;
-      margin-bottom: 20px;
       border-bottom: 1px solid var(--border);
       padding-bottom: 12px;
+      flex-wrap: wrap;
     }
     .tv-tab-btn {
       background: white;
@@ -96,6 +98,62 @@
 
     .btn-back { background: white; color: var(--secondary); border: 1px solid var(--border); padding: 9px 16px; border-radius: 8px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; }
     .btn-back:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+    /* Barra de Categorias Horizontal (Pills) */
+    .category-filter-bar {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 2px 0 4px 0;
+      scrollbar-width: thin;
+      flex-wrap: wrap;
+    }
+    .category-pill {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .category-pill:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    .category-pill.active { background: var(--secondary); color: white; border-color: var(--secondary); }
+
+    /* Barra de Busca Rápida (Idêntica ao Inventário 183) */
+    .search-filter-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      max-width: 650px;
+    }
+    .search-box i { color: var(--text-muted); width: 18px; height: 18px; }
+    .search-box input {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      background: transparent;
+    }
 
     /* Tabela Estilo Card */
     .table-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; flex: 1; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
@@ -189,6 +247,26 @@
       <a href="TVs em circulacao.html" class="tv-tab-btn"><i data-lucide="activity"></i> TVs em Circulação</a>
       <a href="TVs em estoque.html" class="tv-tab-btn active"><i data-lucide="archive"></i> TVs em Estoque</a>
       <a href="Tvs novas.html" class="tv-tab-btn"><i data-lucide="sparkles"></i> TVs Novas</a>
+      <a href="TVs instaladas.html" class="tv-tab-btn"><i data-lucide="tv"></i> TVs Instaladas</a>
+    </div>
+
+    <!-- Barra de Filtros de Modalidade / Categoria -->
+    <div class="category-filter-bar" id="filtroCategorias">
+      <div class="category-pill active" data-cat="Todas" onclick="selecionarFiltroCategoria('Todas')"><i data-lucide="layers"></i> Todas as TVs</div>
+      <div class="category-pill" data-cat="Estoque Padrão" onclick="selecionarFiltroCategoria('Estoque Padrão')"><i data-lucide="archive"></i> Estoque Padrão</div>
+      <div class="category-pill" data-cat="TVs de Plasma" onclick="selecionarFiltroCategoria('TVs de Plasma')"><i data-lucide="tv"></i> TVs de Plasma</div>
+      <div class="category-pill" data-cat="TVs com avarias" onclick="selecionarFiltroCategoria('TVs com avarias')"><i data-lucide="alert-triangle"></i> TVs com Avarias</div>
+    </div>
+
+    <!-- Barra de Busca Rápida (Idêntica ao Inventário 183) -->
+    <div class="search-filter-card">
+      <div class="search-box">
+        <i data-lucide="search"></i>
+        <input type="text" id="buscaRapida" placeholder="Pesquisar por Código, Marca, Modelo, Nº Série, Local ou Observação..." oninput="executarBusca()">
+      </div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+        <span id="contadorItens">Carregando...</span>
+      </div>
     </div>
 
     <!-- Tabela -->
@@ -216,6 +294,15 @@
         <input type="hidden" id="editIndex" value="-1">
 
         <div class="form-grid-2">
+          <div class="form-group full-width">
+            <label>Modalidade / Categoria no Estoque</label>
+            <select id="inpModalidade" required>
+              <option value="Estoque Padrão">Estoque Padrão (TVs em Estoque)</option>
+              <option value="TVs de Plasma">TVs de Plasma</option>
+              <option value="TVs com avarias">TVs com avarias</option>
+            </select>
+          </div>
+
           <div class="form-group">
             <label>Código</label>
             <input type="text" id="inpCodigo" placeholder="Ex: TLV" value="TLV" required>
@@ -273,7 +360,43 @@
   <script>
     const ARQUIVOS_POSSIVEIS = ['tvs_em_estoque.xlsx', encodeURIComponent('tvs_em_estoque.xlsx')]; 
     const STORAGE_KEY = 'db_tvs_estoque';
+    const SUPABASE_URL = "https://tocmqlsicxuxfkiptgaj.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvY21xbHNpY3h1eGZraXB0Z2FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTIyODEsImV4cCI6MjA5OTYyODI4MX0.B-UKh4qMQG02guuJhIlI-ZB0d4OjlByFyfOoGISiqMY";
+
+    let _supabase = null;
+    if (typeof window.supabase !== 'undefined') {
+      try {
+        _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      } catch (err) {
+        console.warn("Supabase init error:", err);
+      }
+    }
+
     let dadosPlanilha = [];
+    let filtroCategoria = 'Todas';
+    let termoBusca = '';
+
+    function normalizarTexto(txt) {
+      if (!txt) return '';
+      return String(txt).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    }
+
+    function selecionarFiltroCategoria(cat) {
+      filtroCategoria = cat;
+      document.querySelectorAll('#filtroCategorias .category-pill').forEach(pill => {
+        if (pill.getAttribute('data-cat') === cat) {
+          pill.classList.add('active');
+        } else {
+          pill.classList.remove('active');
+        }
+      });
+      renderizarTabela(dadosPlanilha);
+    }
+
+    function executarBusca() {
+      termoBusca = normalizarTexto(document.getElementById('buscaRapida')?.value || '');
+      renderizarTabela(dadosPlanilha);
+    }
 
     function salvarStorage() {
       try {
@@ -286,9 +409,9 @@
     function getColIdx(cabecalhos, terms, defaultIdx) {
       if (!cabecalhos || cabecalhos.length === 0) return defaultIdx;
       for (let i = 0; i < cabecalhos.length; i++) {
-        const col = String(cabecalhos[i] || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        const col = normalizarTexto(cabecalhos[i] || '');
         for (const term of terms) {
-          const t = term.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+          const t = normalizarTexto(term);
           if (col === t || col.includes(t)) return i;
         }
       }
@@ -310,6 +433,94 @@
         return 'status-danger';
       }
       return 'status-neutral';
+    }
+
+    function obterCategoriaDaLinha(index) {
+      if (index <= 0 || !dadosPlanilha || !dadosPlanilha[index]) return 'Estoque Padrão';
+      for (let k = index - 1; k >= 1; k--) {
+        const l = dadosPlanilha[k];
+        if (!l) continue;
+        const preench = l.filter(c => c !== undefined && c !== null && String(c).trim() !== '');
+        if (preench.length === 1 && String(l[0]).trim().startsWith('TVs')) {
+          const nome = String(l[0]).trim();
+          if (nome.toLowerCase().includes('plasma')) return 'TVs de Plasma';
+          if (nome.toLowerCase().includes('avaria')) return 'TVs com avarias';
+          return 'Estoque Padrão';
+        }
+      }
+      return 'Estoque Padrão';
+    }
+
+    function obterIndiceInsercao(categoriaDesejada) {
+      if (categoriaDesejada === 'Estoque Padrão') {
+        return 1;
+      }
+      
+      const termo = categoriaDesejada.toLowerCase().includes('plasma') ? 'plasma' : 'avaria';
+      for (let i = 1; i < dadosPlanilha.length; i++) {
+        const l = dadosPlanilha[i];
+        if (!l) continue;
+        const preench = l.filter(c => c !== undefined && c !== null && String(c).trim() !== '');
+        if (preench.length === 1 && String(l[0]).toLowerCase().includes(termo)) {
+          return i + 1;
+        }
+      }
+
+      // Se não encontrou o cabeçalho, cria o separador no final
+      const nomeCabecalho = categoriaDesejada.toLowerCase().includes('plasma') ? 'TVs de Plasma' : 'TVs com avarias';
+      dadosPlanilha.push([nomeCabecalho]);
+      return dadosPlanilha.length;
+    }
+
+    async function sincronizarComInventarioSupabase(tv) {
+      if (!_supabase) return;
+      try {
+        const snLimpo = (tv.sn || '').trim();
+        let obs = tv.observacao || '';
+        if (tv.modalidade && tv.modalidade !== 'Estoque Padrão') {
+          if (!obs.includes(tv.modalidade)) {
+            obs = (obs ? obs + ' | ' : '') + tv.modalidade;
+          }
+        }
+
+        const payload = {
+          categoria: 'Televisores',
+          patrimonio: tv.codigo || 'TLV',
+          num_patrimonio: '-',
+          marca: tv.marca || 'LG',
+          modelo: tv.modelo || 'Televisor',
+          sn: snLimpo || 'S/N',
+          quantidade: parseInt(tv.estoque) || 1,
+          local: '01.03.21.007',
+          observacoes: obs
+        };
+
+        if (snLimpo && snLimpo !== 'XX' && snLimpo.toUpperCase() !== 'S/N') {
+          const { data: existente } = await _supabase
+            .from('inventario')
+            .select('id')
+            .eq('sn', snLimpo)
+            .limit(1);
+
+          if (existente && existente.length > 0) {
+            await _supabase.from('inventario').update(payload).eq('id', existente[0].id);
+            return;
+          }
+        }
+
+        await _supabase.from('inventario').insert([payload]);
+      } catch (err) {
+        console.warn("Supabase inventario sync error:", err);
+      }
+    }
+
+    async function excluirDoInventarioSupabase(sn) {
+      if (!_supabase || !sn || sn === 'XX' || sn.toUpperCase() === 'S/N') return;
+      try {
+        await _supabase.from('inventario').delete().eq('sn', sn.trim()).eq('categoria', 'Televisores');
+      } catch (err) {
+        console.warn("Supabase inventario delete error:", err);
+      }
     }
 
     async function carregarExcel() {
@@ -410,9 +621,10 @@
       thead.innerHTML = '';
       tbody.innerHTML = '';
 
-      if (!dados || dados.length === 0) return;
+      const fonteDados = dados || dadosPlanilha;
+      if (!fonteDados || fonteDados.length === 0) return;
 
-      const cabecalhos = dados[0];
+      const cabecalhos = fonteDados[0];
 
       // Cabeçalho + Ações
       let trHead = '<tr>';
@@ -423,10 +635,13 @@
       thead.innerHTML = trHead;
 
       const idxSituacao = getColIdx(cabecalhos, ['situac', 'status'], 8);
+      let categoriaAtual = 'Estoque Padrão';
+      let linhasExibidas = 0;
+      let totalValidos = 0;
 
       // Linhas
-      for (let i = 1; i < dados.length; i++) {
-        const linha = dados[i];
+      for (let i = 1; i < fonteDados.length; i++) {
+        const linha = fonteDados[i];
         if (!linha || linha.length === 0 || linha.every(c => c === undefined || c === null || String(c).trim() === '')) {
           continue;
         }
@@ -434,15 +649,43 @@
         // Se for linha de categoria especial (ex: 'TVs de Plasma', 'TVs com avarias')
         const preenchidos = linha.filter(c => c !== undefined && c !== null && String(c).trim() !== '');
         if (preenchidos.length === 1 && String(linha[0]).trim().startsWith('TVs')) {
-          tbody.innerHTML += `
-            <tr>
-              <td colspan="${cabecalhos.length + 1}" style="background: #f1f5f9; font-weight: 700; color: var(--secondary); padding: 8px 14px;">
-                <i data-lucide="tag" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>${linha[0]}
-              </td>
-            </tr>
-          `;
+          const nomeSecao = String(linha[0]).trim();
+          if (nomeSecao.toLowerCase().includes('plasma')) {
+            categoriaAtual = 'TVs de Plasma';
+          } else if (nomeSecao.toLowerCase().includes('avaria')) {
+            categoriaAtual = 'TVs com avarias';
+          } else {
+            categoriaAtual = 'Estoque Padrão';
+          }
+
+          if (!termoBusca && (filtroCategoria === 'Todas' || filtroCategoria === categoriaAtual)) {
+            tbody.innerHTML += `
+              <tr>
+                <td colspan="${cabecalhos.length + 1}" style="background: #f1f5f9; font-weight: 700; color: var(--secondary); padding: 8px 14px;">
+                  <i data-lucide="tag" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>${nomeSecao}
+                </td>
+              </tr>
+            `;
+          }
           continue;
         }
+
+        totalValidos++;
+
+        // Filtro por Categoria / Modalidade
+        if (filtroCategoria !== 'Todas' && categoriaAtual !== filtroCategoria) {
+          continue;
+        }
+
+        // Filtro de Busca Rápida
+        if (termoBusca) {
+          const textoLinha = linha.map(c => normalizarTexto(c)).join(' ');
+          if (!textoLinha.includes(termoBusca)) {
+            continue;
+          }
+        }
+
+        linhasExibidas++;
 
         let trBody = '<tr>';
         for (let j = 0; j < cabecalhos.length; j++) {
@@ -496,6 +739,21 @@
         tbody.innerHTML += trBody;
       }
 
+      if (linhasExibidas === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${cabecalhos.length + 1}" style="text-align: center; padding: 25px; color: var(--text-muted);">
+              Nenhum televisor encontrado com os filtros selecionados.
+            </td>
+          </tr>
+        `;
+      }
+
+      const elContador = document.getElementById('contadorItens');
+      if (elContador) {
+        elContador.innerText = `${linhasExibidas} listados de ${totalValidos} televisores`;
+      }
+
       lucide.createIcons();
     }
 
@@ -516,8 +774,17 @@
       
       const form = document.querySelector('#modalLancamento form');
       form.reset();
+      
+      const selMod = document.getElementById('inpModalidade');
+      if (filtroCategoria !== 'Todas') {
+        selMod.value = filtroCategoria;
+      } else {
+        selMod.value = "Estoque Padrão";
+      }
+
       document.getElementById('inpCodigo').value = "TLV";
       document.getElementById('inpEstoque').value = "1";
+      document.getElementById('inpLocal').value = "Almoxarifado";
       document.getElementById('inpSituacao').value = "ok";
 
       document.getElementById('modalLancamento').classList.add('active');
@@ -542,6 +809,10 @@
       document.getElementById('editIndex').value = index;
       document.getElementById('modalTitulo').innerText = "Editar TV em Estoque";
       document.getElementById('btnSubmitModal').innerText = "Salvar Alterações";
+
+      // Detecta a categoria atual da linha
+      const catAtual = obterCategoriaDaLinha(index);
+      document.getElementById('inpModalidade').value = catAtual;
 
       document.getElementById('inpCodigo').value = linha[idxCod] !== undefined ? linha[idxCod] : 'TLV';
       document.getElementById('inpMarca').value = linha[idxMarca] !== undefined ? linha[idxMarca] : '';
@@ -597,6 +868,8 @@
       const idxPol = getColIdx(cabecalhos, ['polegada', 'pol', 'tamanho', '"'], 7);
       const idxSit = getColIdx(cabecalhos, ['situac', 'status'], 8);
 
+      const novaModalidade = document.getElementById('inpModalidade').value;
+
       let linhaDados = index === -1 ? new Array(cabecalhos.length).fill('') : [...dadosPlanilha[index]];
 
       linhaDados[idxCod] = document.getElementById('inpCodigo').value.trim();
@@ -610,23 +883,52 @@
       linhaDados[idxSit] = document.getElementById('inpSituacao').value.trim();
 
       if (index === -1) {
-        dadosPlanilha.splice(1, 0, linhaDados);
+        const destIdx = obterIndiceInsercao(novaModalidade);
+        dadosPlanilha.splice(destIdx, 0, linhaDados);
       } else {
-        dadosPlanilha[index] = linhaDados;
+        const catAntiga = obterCategoriaDaLinha(index);
+        if (catAntiga !== novaModalidade) {
+          dadosPlanilha.splice(index, 1);
+          const destIdx = obterIndiceInsercao(novaModalidade);
+          dadosPlanilha.splice(destIdx, 0, linhaDados);
+        } else {
+          dadosPlanilha[index] = linhaDados;
+        }
       }
 
       salvarStorage();
       renderizarTabela(dadosPlanilha);
       atualizarContador();
       closeModal();
+
+      // Sincroniza em segundo plano com o inventário do Supabase
+      sincronizarComInventarioSupabase({
+        codigo: linhaDados[idxCod],
+        marca: linhaDados[idxMarca],
+        modelo: linhaDados[idxMod],
+        sn: linhaDados[idxSn],
+        estoque: linhaDados[idxEstoque],
+        local: linhaDados[idxLocal],
+        observacao: linhaDados[idxObs],
+        modalidade: novaModalidade,
+        situacao: linhaDados[idxSit]
+      });
     }
 
     function excluirLancamento(index) {
       if (confirm("Tem certeza que deseja excluir esta TV?")) {
+        const cabecalhos = dadosPlanilha[0] || [];
+        const idxSn = getColIdx(cabecalhos, ['sn', 'serie', 'n° serie', 'nº serie'], 3);
+        const snExcluir = dadosPlanilha[index] && dadosPlanilha[index][idxSn] ? dadosPlanilha[index][idxSn] : '';
+
         dadosPlanilha.splice(index, 1);
         salvarStorage();
         renderizarTabela(dadosPlanilha);
         atualizarContador();
+
+        if (snExcluir) {
+          excluirDoInventarioSupabase(snExcluir);
+        }
       }
     }
 
